@@ -45,6 +45,10 @@ If you found a bug, please use the [issue tracker][].
 
 ## Citation
 
+## Disclaimer
+This project includes third-party code under MIT and BSD-3 licenses.
+See THIRD\_PARTY\_NOTICES for details.
+
 > t.b.a
 
 [uv]: https://github.com/astral-sh/uv
