@@ -1,1 +1,1 @@
-from .basic import basic_tool
+from .utils import compute_entropy
