@@ -11,11 +11,10 @@ fate_probability_key = "fate_probabilities"
 CELLS = [f"cell{i}" for i in range(100)]
 GENES = [f"gene{i}" for i in range(20)]
 ACTIVITY_VAR = [f"act{i}" for i in range(15)]
-rng = np.random.default_rng(42)
 
 
 def _create_mudata(n_terminal_states: None | int = 3) -> MuData:
-
+    rng = np.random.default_rng(42)
     rna = AnnData(rng.random((len(CELLS), len(GENES))))
     act = AnnData(rng.random((len(CELLS), len(ACTIVITY_VAR))))
     rna.obs_names, act.obs_names = CELLS, CELLS
@@ -46,6 +45,7 @@ def test_missing_fates():
 
 
 def test_no_pandas_dataframe():
+    rng = np.random.default_rng(42)
     mdata = _create_mudata(n_terminal_states=None)
     mdata.obsm[fate_probability_key] = rng.uniform(size=(len(CELLS), 3))
 

@@ -26,10 +26,10 @@ FEATURES = pd.DataFrame(
 SEED, n_comps = 42, 10
 n_pcs_rna, n_pcs_act = 5, 5
 knn_rna, knn_act, n_neighbors = 5, 5, 5
-rng = np.random.default_rng(SEED)
 
 
 def _generate_activity() -> AnnData:
+    rng = np.random.default_rng(SEED)
     activity = AnnData(rng.random((len(CELLS), len(ACTIVITY_VAR))))
     activity.obs_names = CELLS
     activity.var_names = ACTIVITY_VAR
@@ -37,7 +37,7 @@ def _generate_activity() -> AnnData:
 
 
 def _create_mudata(with_activity: bool = False, with_atac: bool = True, fragment_file: None | str = None) -> MuData:
-
+    rng = np.random.default_rng(SEED)
     rna = AnnData(rng.random((len(CELLS), len(GENES))))
     rna.obs_names = CELLS
     rna.var_names = GENES
