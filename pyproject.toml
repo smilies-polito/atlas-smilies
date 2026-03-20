@@ -3,7 +3,7 @@ build-backend = "hatchling.build"
 requires = [ "hatchling" ]
 
 [project]
-name = "ATLAS"
+name = "atlas"
 version = "0.0.1"
 description = "A multi-omics single cell trajectory inference framework"
 readme = "README.md"
@@ -23,7 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "anndata",
+  "anndata>=0.10",
+  "mudata>=0.3",
+  "muon>=0.1,<0.4",
+  "numpy>=1.23",
+  "pandas>=1.5",
+  "scanpy>=1.9",
   # for debug logging (referenced from the issue template)
   "session-info2",
 ]

@@ -1,98 +1,166 @@
-from collections.abc import Callable, Iterable
-from typing import Any, TypeVar
-
-import numpy as np
-from anndata import AnnData
-
-MuData = TypeVar("MuData")
-SpatialData = TypeVar("SpatialData")
-
-ScverseDataStructures = AnnData | MuData | SpatialData
+import muon as mu
+import pandas as pd
+import scanpy as sc
+from muon import MuData
 
 
-def basic_preproc(adata: AnnData) -> int:
-    """Run a basic preprocessing on the AnnData object.
+def preprocessing(
+    mudata: MuData,
+    n_pcs_rna: int = 30,
+    n_pcs_act: int = 30,
+    knn_rna: int = 30,
+    knn_act: int = 30,
+    use_rep: str | None = None,
+    n_neighbors: int = 30,
+    n_bandwidth_neighbors: int = 20,
+    n_multineighbors: int = 200,
+    metric: str = "euclidean",
+    stranded: bool = False,
+    fragment_path: str | None = None,
+    features: pd.DataFrame | None = None,
+    random_state: int = 42,
+    copy: bool = False,
+) -> MuData:
+    """Preprocess multimodal single-cell data stored in a MuData object.
 
-    Parameters
-    ----------
-    adata
-        The AnnData object to preprocess.
+    This function runs a preprocessing workflow on a MuData object containing
+    scRNA-seq data and either a precomputed gene activity modality or raw
+    scATAC-seq data. If gene activity is not available, it is computed from
+    ATAC-seq fragment data.
 
-    Returns
-    -------
-    Some integer value.
-    """
-    print("Implement a preprocessing function here.")
-    return 0
+    The workflow includes:
 
-
-def elaborate_example(
-    items: Iterable[ScverseDataStructures],
-    transform: Callable[[Any], str],
-    *,  # functions after the asterix are keyword-only arguments
-    layer_key: str | None = None,
-    # Only specify defaults and types in the signature, not the docstring!
-    mudata_mod: str | None = "rna",
-    sdata_table_key: str | None = "table1",
-    max_items: int = 100,
-) -> list[str]:
-    r"""A method with a more complex docstring.
-
-    This is where you add more details.
-    Try to support general container classes such as Sequence, Mapping, or Collection
-    where possible to ensure that your functions can be widely used.
-
-    Data science means there’s lots of math too:
-
-    ..  math::
-
-        x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}
+    - Optional gene activity computation from scATAC-seq
+    - Normalization and PCA on the activity modality
+    - Construction of modality-specific k-nearest neighbor (kNN) graphs
+    - Construction of a weighted nearest neighbor (WNN) graph
+    - Computation of a multimodal UMAP embedding
 
     Parameters
     ----------
-    items
-        AnnData, MuData, or SpatialData objects to process.
-    transform
-        Function to transform each item to string.
-    layer_key
-        Optional layer key to access matrix to apply transformation on.
-    mudata_mod
-        Optional MuData modality key to apply transformation on.
-    sdata_table_key
-        Optional SpatialData table key to apply transformation on.
+    mudata
+            MuData object containing at least the ``"rna"`` modality and either
+            an ``"activity"`` or ``"atac"`` modality.
+    n_pcs_rna
+            Number of principal components used for the RNA kNN graph.
+    n_pcs_act
+            Number of principal components used for the activity kNN graph.
+    knn_rna
+            Number of neighbors for the RNA kNN graph.
+    knn_act
+            Number of neighbors for the activity kNN graph.
+    use_rep
+            Key of the representation to use for neighbor graph construction,
+            as in :func:`scanpy.pp.neighbors`. If ``None``, the default representation is used.
+    n_neighbors
+            Number of neighbors for constructing the weighted nearest neighbor (WNN) graph,
+            as in :func:`muon.pp.neighbors`.
+    n_bandwidth_neighbors
+            Number of neighbors used for bandwidth estimation in the WNN graph,
+            as in :func:`muon.pp.neighbors`.
+    n_multineighbors
+            Number of neighbors used for multimodal neighbor construction,
+            as in :func:`muon.pp.neighbors`.
+    metric
+            Distance metric used for neighbor graph construction,
+            as in :func:`muon.pp.neighbors`.
+    stranded
+            Whether to consider strand information when computing gene activity.
+    fragment_path
+            Path to the fragment file used for gene activity computation if not
+            already present in the ATAC modality. See :func:`muon.atac.tl.count_fragment_features`
+            for more infomation.
+    random_state
+            Random seed used for reproducibility.
+    copy
+            If ``True``, return a copy of the input MuData object. Otherwise,
+            the input object is modified in place.
+
 
     Returns
     -------
-    List of transformed string items.
+    MuData
+            MuData object restricted to the ``"rna"`` and ``"activity"`` modalities,
+            containing:
+
+            - modality-specific kNN graphs in ``.obsp``
+            - weighted nearest neighbor graph stored under ``.uns["wnn"]``
+            - multimodal UMAP embedding stored in ``.obsm["X_umap"]``
+
+    Raises
+    ------
+    KeyError
+            If required modalities are missing (e.g., ``"rna"`` or ``"atac"`` when
+            gene activity must be computed).
+    ValueError
+            If required inputs for gene activity computation are not provided,
+            such as fragment file or feature annotations.
+
+    Notes
+    -----
+    This function relies on functionality from the scverse ecosystem,
+    including :mod:`scanpy` and :mod:`muon`. It assumes that input modalities
+    follow standard conventions (e.g., count matrices in ``.X``).
 
     Examples
     --------
-    >>> elaborate_example(
-    ...     [adata, mudata, spatial_data],
-    ...     lambda vals: f"Statistics: mean={vals.mean():.2f}, max={vals.max():.2f}",
-    ...     {"var_key": "CD45", "modality": "rna", "min_value": 0.1},
-    ... )
-    ['Statistics: mean=1.24, max=8.75', 'Statistics: mean=0.86, max=5.42']
+    >>> preprocess(mdata, n_pcs_rna=30, knn_rna=20)
+
     """
-    result: list[Any] = []
+    data = MuData({k: v.copy() for k, v in mudata.mod.items()}) if copy else mudata
 
-    for item in items:
-        if isinstance(item, AnnData):
-            matrix = item.X if not layer_key else item.layers[layer_key]
-        elif isinstance(item, MuData):
-            matrix = item.mod[mudata_mod].X if not layer_key else item.mod[mudata_mod].layers[layer_key]
-        elif isinstance(item, SpatialData):
-            matrix = item.tables[sdata_table_key].X if not layer_key else item.tables[sdata_table_key].layers[layer_key]
-        else:
-            msg = f"Item {item} must be of type AnnData, MuData, or SpatialData but is {item.__class__}."
-            raise ValueError(msg)
-        if not isinstance(matrix, np.ndarray):
-            msg = f"Item {item} matrix is not a Numpy matrix but of type {matrix.__class__}"
-            raise ValueError(msg)
+    if "rna" not in data.mod:
+        raise KeyError("Modality 'rna' containing gene expression data is mandatory.")
 
-        result.append(transform(matrix.flatten()))
+    if "activity" not in data.mod:
+        # Gene activity modality creation from scATAC-seq using muon.atac
+        # 1. Verify "atac" modality exists
+        # 2. Verify fragment file present in "uns"
+        # 3. If not (2), then: (a) fragment file must be specified and (3) add fragment file to atac
+        # 4. Mandatory features dataframe
+        # 5. Compute activity
+        # 6. Normalise activity
+        # 7. Compute PCA
+        if "atac" not in data.mod:
+            raise KeyError("Modality 'atac' is mandatory when gene activity in not provided.")
 
-        if len(result) >= max_items:
-            break
+        files = data.mod["atac"].uns.get("files", {})
+        if not files or "fragments" not in files:
+            if fragment_path is None:
+                raise ValueError("Fragment file not found in `.uns['files']` and no `fragment_path` provided.")
+            mu.atac.tl.locate_file(data.mod["atac"], file=fragment_path, key="fragments")
+        if features is None:
+            raise ValueError("Feature dataframe not provided.")
+        data.mod["activity"] = mu.atac.tl.count_fragments_features(
+            data=data.mod["atac"], features=features, stranded=stranded
+        )
+        # data.mod["activity"] = data.mod["activity"][data.mod["rna"].obs_names]
+        sc.pp.normalize_total(data.mod["activity"])
+        sc.pp.pca(data.mod["activity"], random_state=random_state)
 
-    return result
+    # Get MuData object only with gene expression and activity values if atac is present
+    if "atac" in data.mod:
+        del data.mod["atac"]
+        data.update()
+
+    # Compute KNN graphs
+    if "distances" not in data.mod["rna"].obsp:
+        sc.pp.neighbors(
+            data.mod["rna"], n_neighbors=knn_rna, n_pcs=n_pcs_rna, random_state=random_state, use_rep=use_rep
+        )
+    if "distances" not in data.mod["activity"].obsp:
+        sc.pp.neighbors(
+            data.mod["activity"], n_neighbors=knn_act, n_pcs=n_pcs_act, random_state=random_state, use_rep=use_rep
+        )
+
+    mu.pp.neighbors(
+        data,
+        key_added="wnn",
+        n_neighbors=n_neighbors,
+        n_bandwidth_neighbors=n_bandwidth_neighbors,
+        n_multineighbors=n_multineighbors,
+        random_state=random_state,
+        metric=metric,
+    )
+    mu.tl.umap(data, random_state=random_state, neighbors_key="wnn")
+    return data
