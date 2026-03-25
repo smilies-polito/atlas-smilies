@@ -51,24 +51,24 @@ def preprocessing(
             Number of neighbors for the activity kNN graph.
     use_rep
             Key of the representation to use for neighbor graph construction,
-            as in :func:`scanpy.pp.neighbors`. If ``None``, the default representation is used.
+            as in scanpy.pp.neighbors. If ``None``, the default representation is used.
     n_neighbors
             Number of neighbors for constructing the weighted nearest neighbor (WNN) graph,
-            as in :func:`muon.pp.neighbors`.
+            as in muon.pp.neighbors.
     n_bandwidth_neighbors
             Number of neighbors used for bandwidth estimation in the WNN graph,
-            as in :func:`muon.pp.neighbors`.
+            as in muon.pp.neighbors.
     n_multineighbors
             Number of neighbors used for multimodal neighbor construction,
-            as in :func:`muon.pp.neighbors`.
+            as in muon.pp.neighbors.
     metric
             Distance metric used for neighbor graph construction,
-            as in :func:`muon.pp.neighbors`.
+            as in muon.pp.neighbors.
     stranded
             Whether to consider strand information when computing gene activity.
     fragment_path
             Path to the fragment file used for gene activity computation if not
-            already present in the ATAC modality. See :func:`muon.atac.tl.count_fragment_features`
+            already present in the ATAC modality. See muon.atac.tl.count_fragment_features
             for more infomation.
     random_state
             Random seed used for reproducibility.
@@ -95,12 +95,6 @@ def preprocessing(
     ValueError
             If required inputs for gene activity computation are not provided,
             such as fragment file or feature annotations.
-
-    Notes
-    -----
-    This function relies on functionality from the scverse ecosystem,
-    including :mod:`scanpy` and :mod:`muon`. It assumes that input modalities
-    follow standard conventions (e.g., count matrices in ``.X``).
 
     Examples
     --------

@@ -2,6 +2,10 @@
 
 ## Preprocessing
 
+Preprocessing utilities for multimodal single-cell data based on
+[scanpy](https://scanpy.readthedocs.io) and
+[muon](https://muon.readthedocs.io)
+
 ```{eval-rst}
 .. module:: atlas.pp
 .. currentmodule:: atlas
@@ -9,8 +13,7 @@
 .. autosummary::
     :toctree: generated
 
-    pp.basic_preproc
-    pp.elaborate_example
+    pp.preprocessing
 ```
 
 ## Tools
@@ -22,7 +25,7 @@
 .. autosummary::
     :toctree: generated
 
-    tl.basic_tool
+    tl.PalantirExtension
 ```
 
 ## Plotting

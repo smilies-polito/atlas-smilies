@@ -1,9 +1,33 @@
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy
+from matplotlib.colors import to_hex
 from muon import MuData
+
+
+def _assign_state_colors(mudata: MuData, cmap: str = "tab20"):
+    all_states = set()
+    if "fate_state_colors" not in mudata.uns:
+        mudata.uns["fate_state_colors"] = {}
+    color_map = mudata.uns["fate_state_colors"]
+
+    for key in ["terminal_states", "initial_states", "intermediate_states"]:
+        states = mudata.uns.get(key, None)
+        if isinstance(states, dict):
+            all_states.update(states.keys())
+
+    new_states = [s for s in all_states if s not in color_map]
+    if not new_states:
+        return
+
+    base_colors = plt.get_cmap(cmap).colors
+    for state in sorted(new_states):
+        idx = len(color_map)
+        color = base_colors[idx % len(base_colors)]
+        color_map[state] = to_hex(color)
 
 
 def _minmax(x: np.ndarray) -> np.ndarray:
