@@ -524,7 +524,7 @@ class CellRankExtension:
         if connectivity_key not in self._mudata.obsp.keys():
             raise KeyError(f"{connectivity_key} not in mudata.obsp")
         if time_key not in self._mudata.obs.columns:
-            raise KeyError(f"{connectivity_key} not in mudata.obs")
+            raise KeyError(f"{time_key} not in mudata.obs")
         if cluster_key is not None and cluster_key not in self.mudata.obs.columns:
             raise KeyError(f"{cluster_key} not in mudata.obs")
 
@@ -562,7 +562,7 @@ class CellRankExtension:
         alpha: float = 1.0,
         stability_threshold: float = 0.96,
         n_terminal_states: int | None = None,
-        n_initial_states: int | None = None,
+        n_initial_states: int | None = 1,
         solver: Literal["direct", "gmres", "lgmres", "bicgstab", "gcrotmk"] = "gmres",
         use_petsc: bool = True,
         n_jobs: int = -1,
@@ -706,4 +706,4 @@ class CellRankExtension:
         self._fate_key = "fate_probabilities"
         _assign_state_colors(self.mudata)
 
-        self.compute_entropy(fate_prob_key="fate_probabilities")
+        compute_entropy(mudata=self._mudata, fate_probability_key="fate_probabilities")
