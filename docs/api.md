@@ -26,6 +26,7 @@ Preprocessing utilities for multimodal single-cell data based on
     :toctree: generated
 
     tl.PalantirExtension
+    tl.CellRankExtension
 ```
 
 ## Plotting

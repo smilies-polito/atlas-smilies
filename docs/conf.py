@@ -101,6 +101,11 @@ intersphinx_mapping = {
     "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
     "muon": ("https://muon.readthedocs.io/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "cellrank": ("https://cellrank.readthedocs.io/en/latest/", None),
+    "palantir": ("https://palantir.readthedocs.io/en/latest/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "petsc4py": ("https://petsc.org/release/petsc4py/", None),
 }
 
 # List of patterns, relative to source directory, that match files and

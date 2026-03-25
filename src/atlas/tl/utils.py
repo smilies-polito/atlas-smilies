@@ -8,6 +8,14 @@ from matplotlib.colors import to_hex
 from muon import MuData
 
 
+def _invert_assignment(assignment):
+    if not isinstance(assignment.dtype, pd.CategoricalDtype):
+        assignment = assignment.astype("category")
+
+    inverted_assignment = {state: assignment.index[assignment == state].tolist() for state in assignment.cat.categories}
+    return inverted_assignment
+
+
 def _assign_state_colors(mudata: MuData, cmap: str = "tab20"):
     all_states = set()
     if "fate_state_colors" not in mudata.uns:
