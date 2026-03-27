@@ -27,6 +27,11 @@ Preprocessing utilities for multimodal single-cell data based on
 
     tl.PalantirExtension
     tl.CellRankExtension
+    tl.pearson_correlation
+    tl.spearman_correlation
+    tl.fate_concentration_index
+    tl.terminal_pseudotime_enrichment
+    tl.terminal_state_silhouette
 ```
 
 ## Plotting
@@ -38,6 +43,11 @@ Preprocessing utilities for multimodal single-cell data based on
 .. autosummary::
     :toctree: generated
 
-    pl.basic_plot
-    pl.BasicClass
+    pl.plot_tree
+    pl.plot_trends
+    pl.plot_fate_probabilities
+    pl.plot_embedding
+
+
+
 ```
