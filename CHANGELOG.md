@@ -2,14 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog][],
-and this project adheres to [Semantic Versioning][].
-
-[keep a changelog]: https://keepachangelog.com/en/1.0.0/
-[semantic versioning]: https://semver.org/spec/v2.0.0.html
-
 ## [Unreleased]
 
-### Added
+## [0.0.5] - 2026-04-01
+### Fixed
+- Fix aggregation of fate probabilities when `cluster_key` is categorical preventing the inclusion of unused categories
 
-- Basic tool, preprocessing and plotting functions
+- Fix muon.MuData copy mechanism in atlas.pp.preprocessing: if copy = True performs deep copy and preserves all information in the new MuData instance
+
+### Added
+- Renamed atlas.tl.PalantirExtension.compute\_diffusion\_map in atlas.tl.PalantirExtension.compute\_diffusion\_maps
+
+### Removed
+- Removed atlas.tl.PalantirExtension.compute\_diffusion\_map

@@ -101,7 +101,7 @@ def preprocessing(
     >>> preprocess(mdata, n_pcs_rna=30, knn_rna=20)
 
     """
-    data = MuData({k: v.copy() for k, v in mudata.mod.items()}) if copy else mudata
+    data = mudata.copy() if copy else mudata
 
     if "rna" not in data.mod:
         raise KeyError("Modality 'rna' containing gene expression data is mandatory.")

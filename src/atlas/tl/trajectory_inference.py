@@ -135,7 +135,7 @@ class PalantirExtension:
 
         self._mudata.obsp[kernel_key] = kernel
 
-    def compute_diffusion_map(
+    def compute_diffusion_maps(
         self,
         kernel_key: str = "DM_Kernel",
         sim_key: str = "DM_Similarity",
@@ -341,7 +341,7 @@ class PalantirExtension:
         # using standard parameters
         if eigvec_multi_key not in self._mudata.obsm:
             self.compute_kernel()
-            self.compute_diffusion_map(seed=random_state)
+            self.compute_diffusion_maps(seed=random_state)
             self.compute_multiscale_space(out_key=eigvec_multi_key)
 
         res = palantir.core.run_palantir(
@@ -379,7 +379,7 @@ class PalantirExtension:
 
             initial_states = {cell_to_cluster.loc[early_cell]: [early_cell]}
             res.branch_probs.columns = cell_to_cluster.loc[res.branch_probs.columns].values
-            fate_probs = res.branch_probs.T.groupby(level=0).sum().T
+            fate_probs = res.branch_probs.T.groupby(level=0, observed=True).sum().T
 
         else:
             terminal_states = {cell: [cell] for cell in res.branch_probs}

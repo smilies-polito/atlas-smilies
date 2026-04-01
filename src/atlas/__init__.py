@@ -1,7 +1,9 @@
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 from . import pl, pp, tl
 
 __all__ = ["pl", "pp", "tl"]
-
-__version__ = version("ATLAS")
+try:
+    __version__ = version("atlas-smilies")
+except PackageNotFoundError:
+    __version__ = "0.0.0"

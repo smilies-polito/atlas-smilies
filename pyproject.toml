@@ -3,8 +3,8 @@ build-backend = "hatchling.build"
 requires = [ "hatchling" ]
 
 [project]
-name = "atlas"
-version = "0.0.1"
+name = "atlas-smilies"
+version = "0.0.5"
 description = "A multi-omics single cell trajectory inference framework"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -86,6 +86,8 @@ envs.hatch-test.matrix = [
 envs.hatch-test.overrides.matrix.deps.env-vars = [
   { key = "UV_PRERELEASE", value = "allow", if = [ "pre" ] },
 ]
+build.targets.wheel.only-include = [ "src/atlas" ]
+build.targets.wheel.sources = { "src" = "" }
 
 [tool.ruff]
 line-length = 120
@@ -137,7 +139,7 @@ run.omit = [
   "**/test_*.py",
 ]
 run.patch = [ "subprocess" ]
-run.source = [ "atlas" ]
+run.source = [ "src/atlas" ]
 
 [tool.cruft]
 skip = [

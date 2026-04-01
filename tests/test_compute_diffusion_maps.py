@@ -28,7 +28,7 @@ def test_missing_kernel():
     pext = PalantirExtension(mudata=mdata)
 
     with pytest.raises(KeyError, match="data.obsp"):
-        pext.compute_diffusion_map()
+        pext.compute_diffusion_maps()
 
 
 def test_ok():
@@ -45,7 +45,7 @@ def test_ok():
 
     pext = PalantirExtension(mudata=mdata)
 
-    pext.compute_diffusion_map(
+    pext.compute_diffusion_maps(
         kernel_key=kernel_key,
         sim_key=sim_key,
         eigval_key=eigval_key,

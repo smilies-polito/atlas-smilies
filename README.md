@@ -6,7 +6,7 @@
 [badge-tests]: https://img.shields.io/github/actions/workflow/status/smilies-polito/ATLAS/test.yaml?branch=main
 [badge-docs]: https://img.shields.io/readthedocs/ATLAS
 
-A multi-omics single cell trajectory inference framework
+ATLAS is a multi-omics single-cell trajectory inference framework that integrates gene expression and gene activity to resolve cell fate dynamics.
 
 ## Getting started
 
