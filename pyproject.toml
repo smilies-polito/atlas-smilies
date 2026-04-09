@@ -89,6 +89,9 @@ envs.hatch-test.overrides.matrix.deps.env-vars = [
 build.targets.wheel.only-include = [ "src/atlas" ]
 build.targets.wheel.sources = { "src" = "" }
 
+[tool.uv]
+override-dependencies = [ "jinja2>=3.1" ]
+
 [tool.ruff]
 line-length = 120
 src = [ "src" ]
