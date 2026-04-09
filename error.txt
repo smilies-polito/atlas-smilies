@@ -1,0 +1,158 @@
+====================================================== test session starts =======================================================
+platform darwin -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/lrcq/ATLAS
+configfile: pyproject.toml
+plugins: anyio-4.12.1, fast-array-utils-1.3.1
+collected 4 items
+
+tests/test_run_pseudotime_kernel.py .FFF                                                                                   [100%]
+
+============================================================ FAILURES ============================================================
+____________________________________________________ test_without_cluster_key ____________________________________________________
+
+    def test_without_cluster_key():
+        cext = CellRankExtension(_create_mudata())
+        cext.compute_kernel(time_key="pseudotime")
+        cext.run(n_components=SCHUR_COMPONENTS, n_cells=N_CELLS, solver="direct", use_petsc=False, allow_overlap=True)
+        assert hasattr(cext, "fate_key")
+        assert cext.cluster_key is None
+        mdata = cext.mudata
+        assert "fate_probabilities" in mdata.obsm
+        fate = mdata.obsm["fate_probabilities"]
+        assert "terminal_states" in mdata.uns
+        assert "initial_states" in mdata.uns
+        assert "intermediate_states" in mdata.uns
+        total_states = len(mdata.uns["terminal_states"]) + len(mdata.uns["initial_states"]) + len(mdata.uns["intermediate_states"])
+        assert "kl_divergence" in mdata.obs
+        assert "shannon_entropy" in mdata.obs
+        terminal_keys = set(mdata.uns["terminal_states"].keys())
+        initial_keys = set(mdata.uns["initial_states"].keys())
+        clusters = set(CLUSTERS)
+        assert not terminal_keys.issubset(clusters)
+        assert not initial_keys.issubset(clusters)
+        assert set(fate.columns) == terminal_keys
+        assert "gpcca" in mdata.uns
+        assert "coarse_T" in mdata.uns["gpcca"]
+        total_states = len(mdata.uns["terminal_states"]) + len(mdata.uns["initial_states"]) + len(mdata.uns["intermediate_states"])
+>       assert mdata.uns["gpcca"]["coarse_T"] is not None and mdata.uns["gpcca"]["coarse_T"].shape[0] == total_states
+E       assert (None is not None)
+
+tests/test_run_pseudotime_kernel.py:78: AssertionError
+------------------------------------------------------ Captured stderr call ------------------------------------------------------
+
+  0%|                                                                                                  | 0/100 [00:00<?, ?cell/s]
+  1%|▉                                                                                         | 1/100 [00:01<02:42,  1.64s/cell]
+100%|████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:01<00:00, 57.85cell/s]
+WARNING: Unable to import `petsc4py` or `slepc4py`. Using `method='brandts'`
+WARNING: For `method='brandts'`, dense matrix is required. Densifying
+WARNING: Found only one macrostate, making it the singular terminal state
+WARNING: There is only `1` terminal state, all cells will have probability `1` of going there
+_____________________________________________________ test_with_cluster_key ______________________________________________________
+
+    def test_with_cluster_key():
+        cext = CellRankExtension(_create_mudata())
+        cext.compute_kernel(time_key="pseudotime", cluster_key="cluster")
+        cext.run(n_components=SCHUR_COMPONENTS, n_cells=N_CELLS, solver="direct", use_petsc=False, allow_overlap=True)
+        assert hasattr(cext, "fate_key")
+        mdata = cext.mudata
+        assert "fate_probabilities" in mdata.obsm
+        fate = mdata.obsm["fate_probabilities"]
+        assert "terminal_states" in mdata.uns
+        assert "initial_states" in mdata.uns
+        assert "intermediate_states" in mdata.uns
+        assert "kl_divergence" in mdata.obs
+        assert "shannon_entropy" in mdata.obs
+        terminal_keys = set(mdata.uns["terminal_states"].keys())
+        initial_keys = set(mdata.uns["initial_states"].keys())
+        clusters = set(CLUSTERS)
+        assert terminal_keys.issubset(clusters)
+        assert initial_keys.issubset(clusters)
+        assert set(fate.columns) == terminal_keys
+        assert "gpcca" in mdata.uns
+        assert "coarse_T" in mdata.uns["gpcca"]
+        total_states = len(mdata.uns["terminal_states"]) + len(mdata.uns["initial_states"]) + len(mdata.uns["intermediate_states"])
+>       assert mdata.uns["gpcca"]["coarse_T"] is not None and mdata.uns["gpcca"]["coarse_T"].shape[0] == total_states
+E       assert (None is not None)
+
+tests/test_run_pseudotime_kernel.py:112: AssertionError
+------------------------------------------------------ Captured stderr call ------------------------------------------------------
+
+  0%|                                                                                                  | 0/100 [00:00<?, ?cell/s]
+100%|██████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:00<00:00, 1171.18cell/s]
+WARNING: Unable to import `petsc4py` or `slepc4py`. Using `method='brandts'`
+WARNING: For `method='brandts'`, dense matrix is required. Densifying
+WARNING: Found only one macrostate, making it the singular terminal state
+WARNING: There is only `1` terminal state, all cells will have probability `1` of going there
+_______________________________________________________ test_fixed_states ________________________________________________________
+
+    def test_fixed_states():
+        cext = CellRankExtension(_create_mudata())
+        cext.compute_kernel(time_key="pseudotime", cluster_key="cluster")
+        cext.run(
+            n_components=SCHUR_COMPONENTS,
+            n_cells=N_CELLS,
+            initial_states=INITIAL_STATE,
+            terminal_states=TERMINAL_STATE,
+            solver="direct",
+            use_petsc=False,
+        )
+        mdata = cext.mudata
+        assert len(mdata.uns["terminal_states"]) == 1
+        assert len(mdata.uns["initial_states"]) == 1
+        assert mdata.uns["intermediate_states"] == {}
+        terminal_keys = set(mdata.uns["terminal_states"].keys())
+        initial_keys = set(mdata.uns["initial_states"].keys())
+        total_states = len(terminal_keys) + len(initial_keys)
+        assert terminal_keys == set(TERMINAL_STATE.keys())
+        assert initial_keys == set(INITIAL_STATE.keys())
+        fate = mdata.obsm["fate_probabilities"]
+        assert "gpcca" in mdata.uns
+        assert set(fate.columns) == set(TERMINAL_STATE.keys())
+        assert "coarse_T" in mdata.uns["gpcca"]
+        assert mdata.uns["gpcca"]["coarse_T"] is None
+        assert "coarse_init" in mdata.uns["gpcca"]
+        assert mdata.uns["gpcca"]["coarse_init"] is None
+        assert "coarse_stat" in mdata.uns["gpcca"]
+        assert mdata.uns["gpcca"]["coarse_stat"] is None
+        assert "eigendecomposition" in mdata.uns["gpcca"]
+        assert isinstance(mdata.uns["gpcca"]["eigendecomposition"], dict)
+        assert "macrostate_composition" in mdata.uns["gpcca"]
+        assert isinstance(mdata.uns["gpcca"]["macrostate_composition"], pd.DataFrame)
+>       assert mdata.uns["gpcca"]["macrostate_composition"].shape[0] == total_states
+E       assert 4 == 2
+
+tests/test_run_pseudotime_kernel.py:160: AssertionError
+------------------------------------------------------ Captured stderr call ------------------------------------------------------
+
+  0%|                                                                                                  | 0/100 [00:00<?, ?cell/s]
+100%|██████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:00<00:00, 1202.89cell/s]
+WARNING: Unable to import `petsc4py` or `slepc4py`. Using `method='brandts'`
+WARNING: For `method='brandts'`, dense matrix is required. Densifying
+WARNING: There is only `1` terminal state, all cells will have probability `1` of going there
+======================================================== warnings summary ========================================================
+tests/test_run_pseudotime_kernel.py::test_missing_kernel
+tests/test_run_pseudotime_kernel.py::test_without_cluster_key
+tests/test_run_pseudotime_kernel.py::test_with_cluster_key
+tests/test_run_pseudotime_kernel.py::test_fixed_states
+  /Users/lrcq/atlasVenv/lib/python3.12/site-packages/mudata/_core/mudata.py:1531: FutureWarning: From 0.4 .update() will not pull obs/var columns from individual modalities by default anymore. Set mudata.set_options(pull_on_update=False) to adopt the new behaviour, which will become the default. Use new pull_obs/pull_var and push_obs/push_var methods for more flexibility.
+    self._update_attr("var", axis=0, join_common=join_common)
+
+tests/test_run_pseudotime_kernel.py::test_missing_kernel
+tests/test_run_pseudotime_kernel.py::test_without_cluster_key
+tests/test_run_pseudotime_kernel.py::test_with_cluster_key
+tests/test_run_pseudotime_kernel.py::test_fixed_states
+  /Users/lrcq/atlasVenv/lib/python3.12/site-packages/mudata/_core/mudata.py:1429: FutureWarning: From 0.4 .update() will not pull obs/var columns from individual modalities by default anymore. Set mudata.set_options(pull_on_update=False) to adopt the new behaviour, which will become the default. Use new pull_obs/pull_var and push_obs/push_var methods for more flexibility.
+    self._update_attr("obs", axis=1, join_common=join_common)
+
+tests/test_run_pseudotime_kernel.py::test_without_cluster_key
+tests/test_run_pseudotime_kernel.py::test_with_cluster_key
+tests/test_run_pseudotime_kernel.py::test_fixed_states
+  /Users/lrcq/ATLAS/src/atlas/tl/utils.py:24: FutureWarning: The default of observed=False is deprecated and will be changed to True in a future version of pandas. Pass observed=False to retain current behavior or observed=True to adopt the future default and silence this warning.
+    return macrostates.groupby(columns).size().reset_index(name="count")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================================== short test summary info =====================================================
+FAILED tests/test_run_pseudotime_kernel.py::test_without_cluster_key - assert (None is not None)
+FAILED tests/test_run_pseudotime_kernel.py::test_with_cluster_key - assert (None is not None)
+FAILED tests/test_run_pseudotime_kernel.py::test_fixed_states - assert 4 == 2
+============================================ 3 failed, 1 passed, 11 warnings in 5.68s ============================================

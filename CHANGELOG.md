@@ -15,3 +15,10 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Removed atlas.tl.PalantirExtension.compute\_diffusion\_map
+
+## [0.0.6] - 2026-04-09
+### Fixed
+- Fixed new MuData creation in atlas.pp.preprocessing with safe MuData copy and replacing `del data.mod["atac"]`
+
+### Added
+- Added function _safe_mudata

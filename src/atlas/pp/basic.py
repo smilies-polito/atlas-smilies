@@ -3,6 +3,8 @@ import pandas as pd
 import scanpy as sc
 from muon import MuData
 
+from .utils import _safe_mudata
+
 
 def preprocessing(
     mudata: MuData,
@@ -134,8 +136,7 @@ def preprocessing(
 
     # Get MuData object only with gene expression and activity values if atac is present
     if "atac" in data.mod:
-        del data.mod["atac"]
-        data.update()
+        data = _safe_mudata(data, modalities=["rna", "activity"])
 
     # Compute KNN graphs
     if "distances" not in data.mod["rna"].obsp:

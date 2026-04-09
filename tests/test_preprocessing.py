@@ -124,7 +124,7 @@ def test_copy_false():
         copy=False,
     )
     assert "atac" not in result.mod
-    assert "atac" not in mdata.mod
+    assert "atac" in mdata.mod
 
 
 @patch("atlas.pp.basic.mu.atac.tl.count_fragments_features")
