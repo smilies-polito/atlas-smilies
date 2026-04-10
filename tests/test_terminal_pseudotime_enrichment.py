@@ -35,8 +35,9 @@ def test_invalid_time_key(mudata):
 
 
 def test_no_terminal_states(mudata):
-    with pytest.raises(ValueError, match="terminal"):
-        terminal_pseudotime_enrichment(mudata, time_key="pseudotime")
+    with pytest.warns(UserWarning):
+        tep = terminal_pseudotime_enrichment(mudata, time_key="pseudotime")
+    assert np.isnan(tep)
 
 
 def test_output_type(mudata):

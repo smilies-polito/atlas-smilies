@@ -603,14 +603,13 @@ def terminal_pseudotime_enrichment(mudata: MuData, time_key: str = "pseudotime",
     ------
     KeyError
         If ``time_key`` is not present in ``mudata.obs``.
-    ValueError
-        If no terminal states are found in ``mudata.uns["terminal_states"]``.
 
     Notes
     -----
     Terminal states are expected to be stored in
     ``mudata.uns["terminal_states"]`` as a dictionary mapping each terminal
     state name to a list of cell identifiers.
+    Returns NaN if no terminal states are found.
 
     """
     if time_key not in mudata.obs:
@@ -619,7 +618,8 @@ def terminal_pseudotime_enrichment(mudata: MuData, time_key: str = "pseudotime",
 
     terminal_states = mudata.uns.get("terminal_states", {})
     if not bool(terminal_states):
-        raise ValueError("No terminal states available")
+        warnings.warn("No terminal states available, returning NaN", stacklevel=2)
+        return np.nan
 
     if rank:
         m = pseudotime.rank(method="average")

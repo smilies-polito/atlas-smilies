@@ -22,3 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Added function _safe_mudata
+
+## [0.0.7] - 2026-04-10
+### Changed
+- Changed KeyError into warning in `atlas.tl.evaluate.terminal_pseudotime_enrichment` when no terminal states are found. In this case np.NaN is returned.
