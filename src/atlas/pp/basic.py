@@ -8,12 +8,12 @@ from .utils import _safe_mudata
 
 def preprocessing(
     mudata: MuData,
-    n_pcs_rna: int = 30,
-    n_pcs_act: int = 30,
-    knn_rna: int = 30,
-    knn_act: int = 30,
+    n_pcs_rna: int = 50,
+    n_pcs_act: int = 50,
+    knn_rna: int = 15,
+    knn_act: int = 15,
     use_rep: str | None = None,
-    n_neighbors: int = 30,
+    n_neighbors: int | None = 30,
     n_bandwidth_neighbors: int = 20,
     n_multineighbors: int = 200,
     metric: str = "euclidean",
@@ -22,6 +22,7 @@ def preprocessing(
     features: pd.DataFrame | None = None,
     random_state: int = 42,
     copy: bool = False,
+    count_reads: bool = False,
 ) -> MuData:
     """Preprocess multimodal single-cell data stored in a MuData object.
 
@@ -53,30 +54,34 @@ def preprocessing(
             Number of neighbors for the activity kNN graph.
     use_rep
             Key of the representation to use for neighbor graph construction,
-            as in scanpy.pp.neighbors. If ``None``, the default representation is used.
+            as in :func:``scanpy.pp.neighbors``. If ``None``, the default representation is used.
     n_neighbors
             Number of neighbors for constructing the weighted nearest neighbor (WNN) graph,
-            as in muon.pp.neighbors.
+            as in :func:``muon.pp.neighbors``. If None, the arithmetic mean of the knn modalities
+            is used.
     n_bandwidth_neighbors
             Number of neighbors used for bandwidth estimation in the WNN graph,
-            as in muon.pp.neighbors.
+            as in :func:``muon.pp.neighbors``.
     n_multineighbors
             Number of neighbors used for multimodal neighbor construction,
-            as in muon.pp.neighbors.
+            as in :func:``muon.pp.neighbors``.
     metric
             Distance metric used for neighbor graph construction,
-            as in muon.pp.neighbors.
+            as in :func:``muon.pp.neighbors.
     stranded
             Whether to consider strand information when computing gene activity.
     fragment_path
             Path to the fragment file used for gene activity computation if not
-            already present in the ATAC modality. See muon.atac.tl.count_fragment_features
+            already present in the ATAC modality. See :func:``muon.atac.tl.count_fragment_features``
             for more infomation.
     random_state
             Random seed used for reproducibility.
     copy
             If ``True``, return a copy of the input MuData object. Otherwise,
             the input object is modified in place.
+    count_reads
+            Parameter for :func:``muon.atal.tl.count_fragments_features``. Determines which columns
+            in the fragment file to use for feature aggregation.
 
 
     Returns
@@ -128,7 +133,7 @@ def preprocessing(
         if features is None:
             raise ValueError("Feature dataframe not provided.")
         data.mod["activity"] = mu.atac.tl.count_fragments_features(
-            data=data.mod["atac"], features=features, stranded=stranded
+            data=data.mod["atac"], features=features, stranded=stranded, count_reads=count_reads
         )
         # data.mod["activity"] = data.mod["activity"][data.mod["rna"].obs_names]
         sc.pp.normalize_total(data.mod["activity"])

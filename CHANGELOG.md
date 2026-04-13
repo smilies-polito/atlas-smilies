@@ -26,3 +26,11 @@ All notable changes to this project will be documented in this file.
 ## [0.0.7] - 2026-04-10
 ### Changed
 - Changed KeyError into warning in `atlas.tl.evaluate.terminal_pseudotime_enrichment` when no terminal states are found. In this case np.NaN is returned.
+
+
+## [0.0.8] - 2026-04-13
+### Changed
+- Added `count_reads` parameter to atlas.pp.preprocessing. The parameter is used in activity computation using muon.
+- Parameter `n_neighbors` in `atlas.pp.preprocessing` updated to include None and adopt standard behavior for `mu.pp.neighbors`.
+- Parameter `knn_rna` and `knn_act` in `atlas.pp.neighbors` set to 15 as in `sc.pp.neighbors` default version 1.12.0.
+- Parameter `n_pcs_rna` and `n_pcs_act` in `atlas.pp.preprocessing` set to 50 as in `sc.pp.pca` default version 1.12.0.
