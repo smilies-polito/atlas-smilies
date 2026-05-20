@@ -458,6 +458,7 @@ class CellRankExtension:
         b: float = 10.0,
         nu: float = 0.5,
         n_jobs: int = -1,
+        backend: str = "loky",
     ) -> None:
         # This function is adapted from CellRab (BSD 3-Clause License).
         # Original source: https://github.com/scverse/cellrank
@@ -498,6 +499,8 @@ class CellRankExtension:
             Parameter controlling the width of the kernel.
         n_jobs
             Number of parallel jobs used for computation.
+        backend
+            Which backend to use for multiprocessing ('loky', 'multiprocessing', 'threading').
 
         Returns
         -------
@@ -543,7 +546,7 @@ class CellRankExtension:
 
         self._kernel = PseudotimeKernel(adata=_tmp, time_key=time_key, conn_key=connectivity_key, backward=backward)
         self._kernel.compute_transition_matrix(
-            threshold_scheme=threshold_scheme, frac_to_keep=frac_to_keep, b=b, nu=nu, n_jobs=n_jobs
+            threshold_scheme=threshold_scheme, frac_to_keep=frac_to_keep, b=b, nu=nu, n_jobs=n_jobs, backend=backend
         )
 
     def run(
@@ -568,6 +571,7 @@ class CellRankExtension:
         n_jobs: int = -1,
         tol: float = 1e-6,
         preconditioner: str | None = None,
+        backend: str = "loky",
     ) -> None:
         """Run trajectory inference using GPCCA on a precomputed kernel.
 
@@ -628,6 +632,8 @@ class CellRankExtension:
             Convergence tolerance for the iterative solver.
         preconditioner
             Optional preconditioner for the solver. See :meth:`cellrank.estimators.GPCCA.compute_fate_probabilities`.
+        backend
+            Which backend to use for multiprocessing ('loky', 'multiprocessing', 'threading').
 
         Returns
         -------
@@ -686,7 +692,7 @@ class CellRankExtension:
             _G.predict_initial_states(n_states=n_initial_states, n_cells=n_cells, allow_overlap=allow_overlap)
 
         _G.compute_fate_probabilities(
-            solver=solver, use_petsc=use_petsc, n_jobs=n_jobs, tol=tol, preconditioner=preconditioner
+            solver=solver, use_petsc=use_petsc, n_jobs=n_jobs, tol=tol, preconditioner=preconditioner, backend=backend
         )
 
         self.mudata.obsm["fate_probabilities"] = pd.DataFrame(

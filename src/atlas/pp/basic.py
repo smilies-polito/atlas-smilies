@@ -54,25 +54,25 @@ def preprocessing(
             Number of neighbors for the activity kNN graph.
     use_rep
             Key of the representation to use for neighbor graph construction,
-            as in :func:``scanpy.pp.neighbors``. If ``None``, the default representation is used.
+            as in :func:`scanpy.pp.neighbors`. If ``None``, the default representation is used.
     n_neighbors
             Number of neighbors for constructing the weighted nearest neighbor (WNN) graph,
-            as in :func:``muon.pp.neighbors``. If None, the arithmetic mean of the knn modalities
+            as in :func:`muon.pp.neighbors`. If None, the arithmetic mean of the knn modalities
             is used.
     n_bandwidth_neighbors
             Number of neighbors used for bandwidth estimation in the WNN graph,
-            as in :func:``muon.pp.neighbors``.
+            as in :func:`muon.pp.neighbors`.
     n_multineighbors
             Number of neighbors used for multimodal neighbor construction,
-            as in :func:``muon.pp.neighbors``.
+            as in :func:`muon.pp.neighbors`.
     metric
             Distance metric used for neighbor graph construction,
-            as in :func:``muon.pp.neighbors.
+            as in :func:``muon.pp.neighbors``.
     stranded
             Whether to consider strand information when computing gene activity.
     fragment_path
             Path to the fragment file used for gene activity computation if not
-            already present in the ATAC modality. See :func:``muon.atac.tl.count_fragment_features``
+            already present in the ATAC modality. See :func:`muon.atac.tl.count_fragments_features`
             for more infomation.
     random_state
             Random seed used for reproducibility.
@@ -80,7 +80,7 @@ def preprocessing(
             If ``True``, return a copy of the input MuData object. Otherwise,
             the input object is modified in place.
     count_reads
-            Parameter for :func:``muon.atal.tl.count_fragments_features``. Determines which columns
+            Parameter for :func:`muon.atac.tl.count_fragments_features`. Determines which columns
             in the fragment file to use for feature aggregation.
 
 

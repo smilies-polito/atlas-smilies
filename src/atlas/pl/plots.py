@@ -187,7 +187,7 @@ def plot_trends(
     time_key: str = "pseudotime",
     fate_probability_key: str = "fate_probabilities",
     branches: list | str | None = None,
-    sharex: bool = True,
+    sharex: bool = False,
     n_splines: int = 8,
     n_points: int = 200,
     order: int = 1,
@@ -265,7 +265,7 @@ def plot_trends(
     colors = mudata.uns.get("fate_state_colors", {})
     default_color = "grey"
 
-    fig, axes = plt.subplots(2, 1, figsize=(7, 9), sharex=False)
+    fig, axes = plt.subplots(2, 1, figsize=(7, 9), sharex=sharex)
 
     for branch in branches:
         pred = predictions.get(branch, None)
@@ -285,7 +285,7 @@ def plot_trends(
     axes[0].set_title(f"Dynamics across lineages: {ptf} -> {gene}")
 
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="center right", frameon=False)
+    fig.legend(handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
 
     plt.tight_layout(rect=[0, 0, 0.85, 1])
 
@@ -294,7 +294,7 @@ def plot_trends(
         if not os.path.exists(figure_path):
             os.mkdir(figure_path)
         path = os.path.join(figure_path, f"trends_{save}.png")
-        plt.savefig(path)
+        plt.savefig(path, bbox_inches="tight", dpi=300)
 
 
 def plot_tree(

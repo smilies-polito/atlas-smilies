@@ -4,7 +4,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "atlas-smilies"
-version = "0.0.8"
+version = "0.0.11"
 description = "A multi-omics single cell trajectory inference framework"
 readme = "README.md"
 license = { file = "LICENSE" }

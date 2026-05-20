@@ -11,5 +11,7 @@ changelog.md
 contributing.md
 references.md
 
-notebooks/example
+notebooks/tutorial1.ipynb
+notebooks/tutorial2.ipynb
+notebooks/tutorial3.ipynb
 ```
