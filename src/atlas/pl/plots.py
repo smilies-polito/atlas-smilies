@@ -154,30 +154,42 @@ def plot_fate_probabilities(
     _terminal_colors = [_all_colors[state] for state in _terminal_states]
     _data = Lineage(fate_probabilities.to_numpy(), names=_terminal_states, colors=_terminal_colors)
 
-    _singleton = _data.shape[1] == 1
     _data = _data[states].copy()
+    _singleton = _data.shape[1] == 1
     _X = _data.X
 
-    if _X.shape[1] == 1 and np.allclose(_X, 1.0):
-        _X = np.ones_like(_X)
+    _is_singleton_all_one = _singleton and np.allclose(_X, 1.0)
 
-    for col in _X.T:
-        mask = ~np.isclose(col, 1.0)
-        if np.any(mask):
-            col[~mask] = np.nanmax(col[mask])
-
-    kwargs.setdefault("save", save)
-    kwargs.setdefault("legend_loc", "on data")
-    kwargs["color_gradients"] = _data
-
-    if _singleton and not np.allclose(_X, 1.0):
-        kwargs.setdefault("perc", [0, 95])
-        _ = kwargs.pop("color_gradients", None)
+    if not _is_singleton_all_one and not _singleton:
+        for col in _X.T:
+            finite = np.isfinite(col)
+            _has_intermediate = np.any(finite & (col > 0.0) & (col < 1.0))
+            if _has_intermediate:
+                mask = ~np.isclose(col, 1.0)
+                if np.any(mask):
+                    col[~mask] = np.nanmax(col[mask])
 
     _tmp = AnnData(X=np.zeros((mudata.n_obs, 1)), obs=mudata.obs.copy())
     _tmp.obsm[embedding_key] = mudata.obsm[embedding_key]
 
-    scv.pl.scatter(_tmp, title=title, color_map=cmap, **kwargs)
+    kwargs.setdefault("save", save)
+    kwargs.setdefault("legend_loc", "on data")
+
+    if _is_singleton_all_one:
+        state = states[0]
+        color_key = f"_fate_singleton_{state}"
+        _tmp.obs[color_key] = _all_colors[state]
+        _ = kwargs.pop("color_map", None)
+        _ = kwargs.pop("color_gradients", None)
+        _ = kwargs.pop("cmap", None)
+        _ = kwargs.pop("perc", None)
+        kwargs["colorbar"] = False
+        kwargs["color"] = color_key
+        kwargs["palette"] = [_all_colors[state]]
+    else:
+        kwargs["color_gradients"] = _data
+
+    scv.pl.scatter(_tmp, title=title, basis=embedding_key.replace("X_", ""), **kwargs)
 
 
 def plot_trends(

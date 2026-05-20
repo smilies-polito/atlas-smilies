@@ -41,6 +41,10 @@ All notable changes to this project will be documented in this file.
 
 
 ## [0.0.11] - 2026-05-18
-### Changed
-- Added `backend` parameter to atlas.tl.CellRankExtension.compute_transition_matrix. The parameter is used for parallelization.
+### Added
+- Added `backend` parameter to atlas.tl.CellRankExtension.compute\_transition\_matrix. The parameter is used for parallelization.
 - Added `backend` parameter to atlas.tl.CellRankExtension.run. The parameter is used for parallelization.
+
+## [0.0.12] - 2026-05-20
+### Changed
+- Fixed plot fate probabilities when a single fate is found
