@@ -1,18 +1,21 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [ "hatchling" ]
+requires = [ "hatch-vcs", "hatchling" ]
 
 [project]
 name = "atlas-smilies"
-version = "0.0.12"
 description = "A multi-omics single cell trajectory inference framework"
 readme = "README.md"
 license = { file = "LICENSE" }
 maintainers = [
   { name = "Alessia Leclercq", email = "alessia.leclercq@polito.it" },
+  { name = "Lorenzo Martini", email = "lorenzo.martini@polito.it" },
+  { name = "Roberta Bardini", email = "roberta.bardini@polito.it" },
+  { name = "Stefano Di Carlo", email = "stefano.dicarlo@polito.it" },
+  { name = "Alessandro Savino", email = "alessandro.savino@polito.it" },
 ]
 authors = [
-  { name = "Alessia Leclercq" },
+  { name = "SMILIES" },
 ]
 requires-python = ">=3.11"
 classifiers = [
@@ -22,6 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
+dynamic = [ "version" ]
 dependencies = [
   "anndata>=0.10",
   "cellrank>=2",
@@ -38,9 +42,9 @@ dependencies = [
   "session-info2",
 ]
 # https://docs.pypi.org/project_metadata/#project-urls
-urls.Documentation = "https://ATLAS.readthedocs.io/"
-urls.Homepage = "https://github.com/smilies-polito/ATLAS"
-urls.Source = "https://github.com/smilies-polito/ATLAS"
+urls.Documentation = "https://atlas-smilies.readthedocs.io/"
+urls.Homepage = "https://github.com/smilies-polito/atlas-smilies"
+urls.Source = "https://github.com/smilies-polito/atlas-smilies"
 
 [dependency-groups]
 dev = [
@@ -88,6 +92,7 @@ envs.hatch-test.overrides.matrix.deps.env-vars = [
 ]
 build.targets.wheel.only-include = [ "src/atlas" ]
 build.targets.wheel.sources = { "src" = "" }
+version.source = "vcs"
 
 [tool.uv]
 override-dependencies = [ "jinja2>=3.1" ]

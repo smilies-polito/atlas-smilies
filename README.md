@@ -3,8 +3,8 @@
 [![Tests][badge-tests]][tests]
 [![Documentation][badge-docs]][documentation]
 
-[badge-tests]: https://img.shields.io/github/actions/workflow/status/smilies-polito/ATLAS/test.yaml?branch=main
-[badge-docs]: https://img.shields.io/readthedocs/ATLAS
+[badge-tests]: https://img.shields.io/github/actions/workflow/status/smilies-polito/atlas-smilies/test.yaml?branch=public
+[badge-docs]: https://img.shields.io/readthedocs/atlas-smilies
 
 ATLAS is a framework for multi-omic trajectory inference from paired single-cell RNA and ATAC sequencing data. By integrating transcriptional and chromatin accessibility information within a unified representation, ATLAS enables pseudotime reconstruction and cell fate prediction that directly incorporate regulatory dynamics.
 See our publication to learn more:
@@ -13,7 +13,7 @@ See our publication to learn more:
 Publication will come soon!
 ```
 
-![ATLAS WORKFLOW](/imgs/workflow.svg)
+![ATLAS WORKFLOW](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/imgs/workflow.svg)
 
 ## Getting started
 
@@ -59,9 +59,9 @@ See THIRD\_PARTY\_NOTICES for details.
 
 [uv]: https://github.com/astral-sh/uv
 [scverse discourse]: https://discourse.scverse.org/
-[issue tracker]: https://github.com/smilies-polito/ATLAS/issues
-[tests]: https://github.com/smilies-polito/ATLAS/actions/workflows/test.yaml
-[documentation]: https://ATLAS.readthedocs.io
-[changelog]: https://ATLAS.readthedocs.io/en/latest/changelog.html
-[api documentation]: https://ATLAS.readthedocs.io/en/latest/api.html
-[pypi]: https://pypi.org/project/ATLAS
+[issue tracker]: https://github.com/smilies-polito/atlas-smilies/issues
+[tests]: https://github.com/smilies-polito/atlas-smilies/actions/workflows/test.yaml
+[documentation]: https://atlas-smilies.readthedocs.io
+[changelog]: https://atlas-smilies.readthedocs.io/en/latest/changelog.html
+[api documentation]: https://atlas-smilies.readthedocs.io/en/latest/api.html
+[pypi]: https://pypi.org/project/atlas-smilies
