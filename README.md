@@ -10,10 +10,18 @@ ATLAS is a framework for multi-omic trajectory inference from paired single-cell
 See our publication to learn more:
 
 ```
-Publication will come soon!
+Publication will come soon! :)
 ```
 
 ![ATLAS WORKFLOW](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/imgs/workflow.svg)
+
+ATLAS main functionalities include:
+- Computation of gene activity from scATAC-seq data
+- Support for multi-omics representations using [MuData](https://mudata.readthedocs.io/stable/)
+- Creation of a Weighted Nearest Neighbor graph
+- Trajectory inference based on multiple strategies
+- Plots
+- Trajectory evaluation based on unsupervised metrics
 
 ## Getting started
 
@@ -22,19 +30,9 @@ in particular, the [API documentation][].
 
 ## Installation
 
-You need to have Python 3.12 or newer installed on your system.
-
-There are several alternative options to install ATLAS:
-
-1) Install the latest release of `ATLAS` from [PyPI][]:
-
+To install ATLAS plase use:
 ```bash
 pip install atlas-smilies
-```
-
-1. Install the latest development version:
-
-```bash
 ```
 
 ## Release notes
@@ -43,8 +41,7 @@ See the [changelog][].
 
 ## Contact
 
-For questions and help requests, you can reach out in the [scverse discourse][].
-If you found a bug, please use the [issue tracker][].
+For questions, bug report and help requests, please use the [issue tracker][].
 
 ## Related Works
 - Lange, M., Bergen, V., Klein, M. et al. CellRank for directed single-cell fate mapping. Nat Methods 19, 159–170 (2022). https://doi.org/10.1038/s41592-021-01346-6
@@ -53,8 +50,7 @@ If you found a bug, please use the [issue tracker][].
 - Louis Faure, Ruslan Soldatov, Peter V. Kharchenko, Igor Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single cell data, Bioinformatics, btac746; doi: https://doi.org/10.1093/bioinformatics/btac746
 
 ## Disclaimer
-This project includes third-party code under MIT and BSD-3 licenses.
-See THIRD\_PARTY\_NOTICES for details.
+This project includes third-party code under MIT and BSD-3 licenses, see THIRD\_PARTY\_NOTICES for details.
 
 
 [uv]: https://github.com/astral-sh/uv
