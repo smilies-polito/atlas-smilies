@@ -125,14 +125,12 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
-html_logo = "_static/logo.png"
+html_logo = "_static/imgs/light_mode_logo.png"
 
-html_title = project
+html_title = ""
 
 html_theme_options = {
     "repository_url": repository_url,
-    "logo_only": True,
-    "display_version": False,
     "use_repository_button": True,
     "path_to_docs": "docs/",
     "navigation_with_keys": False,

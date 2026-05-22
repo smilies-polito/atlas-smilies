@@ -2,9 +2,15 @@
 
 [![Tests][badge-tests]][tests]
 [![Documentation][badge-docs]][documentation]
+[![Python Version][badge-pyversions]][link-pypi]
+[![Codecov][badge-codecov]][link-codecov]
 
 [badge-tests]: https://img.shields.io/github/actions/workflow/status/smilies-polito/atlas-smilies/test.yaml?branch=public
 [badge-docs]: https://img.shields.io/readthedocs/atlas-smilies
+[badge-pyversions]: https://img.shields.io/pypi/pyversions/atlas-smilies
+[badge-codecov]: https://codecov.io/gh/smilies-polito/atlas-smilies/branch/public/graph/badge.svg
+[link-codecov]: https://codecov.io/gh/smilies-polito/atlas-smilies
+[link-pypi]: https://pypi.org/project/atlas-smilies
 
 ATLAS is a framework for multi-omic trajectory inference from paired single-cell RNA and ATAC sequencing data. By integrating transcriptional and chromatin accessibility information within a unified representation, ATLAS enables pseudotime reconstruction and cell fate prediction that directly incorporate regulatory dynamics.
 See our publication to learn more:
@@ -12,8 +18,7 @@ See our publication to learn more:
 ```
 Publication will come soon! :)
 ```
-
-![ATLAS WORKFLOW](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/workflow.svg)
+![ATLAS logo](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/light_mode_logo.png)
 
 ATLAS main functionalities include:
 - Computation of gene activity from scATAC-seq data
@@ -49,7 +54,7 @@ For questions, bug report and help requests, please use the [issue tracker][].
 - Louis Faure, Ruslan Soldatov, Peter V. Kharchenko, Igor Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single cell data, Bioinformatics, btac746; doi: https://doi.org/10.1093/bioinformatics/btac746
 
 ## Disclaimer
-This project includes third-party code under MIT and BSD-3 licenses, see THIRD\_PARTY\_NOTICES for details.
+This project includes third-party code under MIT and BSD-3 licenses, see [THIRD\_PARTY\_NOTICES][] for details.
 
 
 [uv]: https://github.com/astral-sh/uv
@@ -61,6 +66,7 @@ This project includes third-party code under MIT and BSD-3 licenses, see THIRD\_
 [api documentation]: https://atlas-smilies.readthedocs.io/en/latest/api.html
 [pypi]: https://pypi.org/project/atlas-smilies
 [codecov]: https://codecov.io/gh/smilies-polito/atlas-smilies
+[THIRD\_PARTY\_NOTICES]: https://github.com/smilies-polito/atlas-smilies/blob/public/THIRD_PARTY_NOTICES
 
 [Weighted Nearest Neighbors]: https://www.sciencedirect.com/science/article/pii/S0092867421005833
 [MuData]: https://mudata.readthedocs.io/stable/
