@@ -4,8 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## Release
 
-## [0.1.0] - 2026-05-23
-First package release
 
 ## Unreleased
 
@@ -53,3 +51,6 @@ First package release
 ## [0.0.12] - 2026-05-20
 ### Changed
 - Fixed plot fate probabilities when a single fate is found
+
+## [0.1.0] - 2026-05-23
+Package release on github
