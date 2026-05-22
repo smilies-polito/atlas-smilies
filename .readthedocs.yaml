@@ -17,4 +17,4 @@ build:
 
 submodules:
   include:
-  - [docs/notebooks]
+  - docs/notebooks
