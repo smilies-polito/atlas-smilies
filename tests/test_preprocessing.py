@@ -26,6 +26,7 @@ FEATURES = pd.DataFrame(
 SEED, n_comps = 42, 10
 n_pcs_rna, n_pcs_act = 5, 5
 knn_rna, knn_act, n_neighbors = 5, 5, 5
+n_multineighbors, n_bandwidth_neighbors = 30, 5
 
 
 def _generate_activity() -> AnnData:
@@ -101,6 +102,8 @@ def test_copy_true():
         n_pcs_rna=n_pcs_rna,
         n_pcs_act=n_pcs_act,
         n_neighbors=n_neighbors,
+        n_multineighbors=n_multineighbors,
+        n_bandwidth_neighbors=n_bandwidth_neighbors,
         copy=True,
     )
     assert "atac" not in result.mod
@@ -121,6 +124,8 @@ def test_copy_false():
         n_pcs_rna=n_pcs_rna,
         n_pcs_act=n_pcs_act,
         n_neighbors=n_neighbors,
+        n_multineighbors=n_multineighbors,
+        n_bandwidth_neighbors=n_bandwidth_neighbors,
         copy=False,
     )
     assert "atac" not in result.mod
@@ -141,6 +146,8 @@ def test_activity(mock_func):
         n_pcs_rna=n_pcs_rna,
         n_pcs_act=n_pcs_act,
         n_neighbors=n_neighbors,
+        n_multineighbors=n_multineighbors,
+        n_bandwidth_neighbors=n_bandwidth_neighbors,
         copy=False,
     )
     assert "activity" in result.mod
