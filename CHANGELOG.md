@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## Release
+
+## [0.1.0] - 2026-05-23
+First package release
+
+## Unreleased
 
 ## [0.0.5] - 2026-04-01
 ### Fixed

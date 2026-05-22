@@ -41,7 +41,7 @@ pip install atlas-smilies
 
 ## Release notes
 
-See the [changelog][].
+See the [CHANGELOG][].
 
 ## Contact
 
@@ -62,7 +62,7 @@ This project includes third-party code under MIT and BSD-3 licenses, see [THIRD\
 [issue tracker]: https://github.com/smilies-polito/atlas-smilies/issues
 [tests]: https://github.com/smilies-polito/atlas-smilies/actions/workflows/test.yaml
 [documentation]: https://atlas-smilies.readthedocs.io
-[changelog]: https://atlas-smilies.readthedocs.io/en/latest/changelog.html
+[CHANGELOG]: https://atlas-smilies.readthedocs.io/en/latest/changelog.html
 [api documentation]: https://atlas-smilies.readthedocs.io/en/latest/api.html
 [pypi]: https://pypi.org/project/atlas-smilies
 [codecov]: https://codecov.io/gh/smilies-polito/atlas-smilies
