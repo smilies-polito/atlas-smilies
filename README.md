@@ -13,7 +13,7 @@ See our publication to learn more:
 Publication will come soon! :)
 ```
 
-![ATLAS WORKFLOW](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/imgs/workflow.svg)
+![ATLAS WORKFLOW](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/workflow.svg)
 
 ATLAS main functionalities include:
 - Computation of gene activity from scATAC-seq data
