@@ -20,7 +20,6 @@ ATLAS main functionalities include:
 - Support for multi-omics representations using [MuData](https://mudata.readthedocs.io/stable/)
 - Creation of a Weighted Nearest Neighbor graph
 - Trajectory inference based on multiple strategies
-- Plots
 - Trajectory evaluation based on unsupervised metrics
 
 ## Getting started
