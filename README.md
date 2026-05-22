@@ -17,8 +17,8 @@ Publication will come soon! :)
 
 ATLAS main functionalities include:
 - Computation of gene activity from scATAC-seq data
-- Support for multi-omics representations using [MuData](https://mudata.readthedocs.io/stable/)
-- Creation of a Weighted Nearest Neighbor graph
+- Support for multi-omics representations using [MuData]
+- Creation of a [Weighted Nearest Neighbors] graph
 - Trajectory inference based on multiple strategies
 - Trajectory evaluation based on unsupervised metrics
 
@@ -60,3 +60,7 @@ This project includes third-party code under MIT and BSD-3 licenses, see THIRD\_
 [changelog]: https://atlas-smilies.readthedocs.io/en/latest/changelog.html
 [api documentation]: https://atlas-smilies.readthedocs.io/en/latest/api.html
 [pypi]: https://pypi.org/project/atlas-smilies
+[codecov]: https://codecov.io/gh/smilies-polito/atlas-smilies
+
+[Weighted Nearest Neighbors]: https://www.sciencedirect.com/science/article/pii/S0092867421005833
+[MuData]: https://mudata.readthedocs.io/stable/

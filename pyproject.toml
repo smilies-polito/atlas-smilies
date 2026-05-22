@@ -15,7 +15,7 @@ maintainers = [
   { name = "Alessandro Savino", email = "alessandro.savino@polito.it" },
 ]
 authors = [
-  { name = "SMILIES" },
+  { name = "smilies-polito" },
 ]
 requires-python = ">=3.11"
 classifiers = [
