@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Release
-
+### [1.0.0] - 2026-05-25
+First public release
 
 ## Unreleased
 
