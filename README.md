@@ -19,7 +19,7 @@ See our publication to learn more:
 Leclercq, A., Martini, L., Bardini, R., Savino, A., & Di Carlo, S. (2026). ATLAS: A scverse-compatible package for multi-omic single-cell trajectory inference integration. bioRxiv. https://doi.org/10.64898/2026.05.23.727175
 
 ```
-![ATLAS workflow](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/workflow.pdf)
+![ATLAS workflow](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/workflow.svg)
 
 ATLAS main functionalities include:
 - Computation of gene activity from scATAC-seq data
