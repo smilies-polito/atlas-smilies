@@ -407,11 +407,15 @@ def plot_tree(
         warnings.warn(f"Specified color ({color}) not in mudata.obs", stacklevel=2)
         return
 
-    fate_probabilities = mudata.obsm[fate_probability_key].loc[mudata.obs_names]
+    fate_probabilities = mudata.obsm[fate_probability_key]
+    if fate_probabilities is None:
+        warnings.warn("WARING: fate probabilties are not available", stacklevel=2)
+        return
+    fate_probabilities = fate_probabilities.loc[mudata.obs_names]
 
     # scFates.cellrank_to_tree does not check n_fates = 1 and cellrank.pl.circular_projection does not work.
-    if fate_probabilities is None and fate_probabilities.shape[1] == 0:
-        raise warnings.warn("Fate probabilities are not available; Try recompute them", stacklevel=2)
+    if fate_probabilities.shape[1] == 0:
+        warnings.warn("Fate probabilities are not available; Try recompute them", stacklevel=2)
         return
 
     if fate_probabilities.shape[1] < 2:

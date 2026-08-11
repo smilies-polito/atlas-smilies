@@ -1,11 +1,85 @@
 import warnings
+from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy
+from anndata import AnnData
 from matplotlib.colors import to_hex
 from muon import MuData
+from scipy.sparse import csr_matrix
+
+
+def _cellrank_anndata(mudata: MuData, connectivity_key: str, cluster_key: str | None = None) -> AnnData:
+    """Build the temporary :class:`~anndata.AnnData` required by the CellRank interface.
+
+    CellRank inspects the shape and variable names of the object it is given, so this
+    view carries a correctly shaped placeholder matrix, the variable index of the
+    ``"rna"`` modality, the observation frame, and the requested pairwise matrix.
+
+    The original ``MuData`` is left unchanged.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object.
+    connectivity_key
+        Key in ``mudata.obsp`` holding the connectivity matrix to carry over.
+    cluster_key
+        Column of ``mudata.obs`` to cast to ``category``, as CellRank expects. Ignored
+        when ``None``.
+
+    Returns
+    -------
+    A temporary :class:`~anndata.AnnData` view over ``mudata``.
+    """
+    adata = AnnData(
+        X=csr_matrix((mudata.n_obs, mudata["rna"].n_vars)),
+        obs=mudata.obs.copy(),
+        var=pd.DataFrame([], index=mudata["rna"].var_names),
+    )
+    adata.obsp[connectivity_key] = mudata.obsp[connectivity_key]
+
+    if cluster_key is not None:
+        adata.obs[cluster_key] = adata.obs[cluster_key].astype("category")
+
+    return adata
+
+
+def _palantir_anndata(mudata: MuData, eigvec_keys: Sequence[str], multiscale: pd.DataFrame | np.ndarray) -> AnnData:
+    """Build the temporary :class:`~anndata.AnnData` required by the Palantir interface.
+
+    Palantir's cell-selection helpers read only ``obs``, ``obs_names`` and one
+    multidimensional annotation, so this view carries nothing else.
+
+    The multiscale representation is attached under every key in ``eigvec_keys``, all
+    referencing the same data. This exists because Palantir versions below 1.4.5 do not
+    forward the ``eigvec_key`` argument of :func:`palantir.utils.early_cell` to
+    :func:`palantir.utils.fallback_terminal_cell`, which therefore looks the
+    representation up under Palantir's own default name and fails when the caller stored
+    it elsewhere. Registering both names lets the fallback operate on the same
+    representation ATLAS uses, on every supported Palantir version.
+
+    The original ``MuData`` is left unchanged.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object.
+    eigvec_keys
+        Keys under which to register ``multiscale`` in ``.obsm``.
+    multiscale
+        Multiscale diffusion representation, of shape ``(n_cells, n_components)``.
+
+    Returns
+    -------
+    A temporary :class:`~anndata.AnnData` view over ``mudata``.
+    """
+    adata = AnnData(obs=mudata.obs.copy())
+    for key in eigvec_keys:
+        adata.obsm[key] = multiscale
+    return adata
 
 
 def _invert_assignment(assignment):
