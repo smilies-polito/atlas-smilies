@@ -7,7 +7,7 @@ import pandas as pd
 from muon import MuData
 from scipy.sparse import csr_matrix, find
 
-from .utils import _assign_state_colors, _palantir_anndata, compute_entropy
+from .utils import _assign_state_colors, _deprecated_key_arg, _palantir_anndata, _resolve_graph_key, compute_entropy
 
 #: Key under which :func:`palantir.utils.fallback_terminal_cell` looks up the multiscale
 #: space. Palantir below 1.4.5 does not forward the ``eigvec_key`` of
@@ -51,8 +51,9 @@ class PalantirExtension:
 
     def compute_kernel(
         self,
-        knn_key: str = "wnn",
-        distance_key: str = "wnn_distances",
+        key: str | None = None,
+        knn_key: str | None = None,
+        distance_key: str | None = None,
         knn: int | None = None,
         alpha: float = 0,
         kernel_key: str = "DM_Kernel",
@@ -65,21 +66,31 @@ class PalantirExtension:
         # - Does not compute neighborhood graph and
         #       it accounts for the graph to be already present
         # - Avoids sklearn-based backend
-        """Compute an adaptive Gaussian kernel from a kNN graph.
+        """Compute an adaptive Gaussian kernel from a neighbors graph.
 
         This function builds a symmetric affinity matrix using an adaptive
         bandwidth scheme, following the approach described in :cite:`palantir`.
-        The kernel is constructed from a k-nearest neighbors distance graph
+        The kernel is constructed from a nearest neighbors distance graph
         stored in ``mudata.obsp``.
+
+        .. deprecated:: 1.1.0
+            The `distance_key` and `knn_key` parameters are deprecated and
+            will be removed in version 2.0.0. They are retained in version
+            1.1.0 for backwards compatibility. Use `key` to adopt the new behavior.
 
         Parameters
         ----------
+        key
+            Key in ``mudata.uns`` where the graph is recorded. The distance matrix and the
+            neighborhood size are resolved from it, so nothing else is needed to identify
+            the graph.
         knn_key
-            Key in ``mudata.uns`` where neighborhood parameters are stored.
-            Must contain ``['params']['n_neighbors']``. Default is ``"wnn"``.
+             Key in ``mudata.uns`` where neighborhood parameters are stored.
+             Must contain ``['params']['n_neighbors']``.
+             Deprecated in 1.1.0 and will be removed in version 2.0.0.
         distance_key
-            Key in ``mudata.obsp`` where the kNN distance matrix is stored.
-            Default is ``"wnn_distances"``.
+             Key in ``mudata.obsp`` where the kNN distance matrix is stored.
+             Deprecated in 1.1.0 and will be removed in version 2.0.0.
         knn
             Number of nearest neighbors used to define the adaptive bandwidth.
             If ``None`` or larger than the number of neighbors stored in
@@ -111,12 +122,19 @@ class PalantirExtension:
         The resulting affinity matrix is symmetrized and optionally normalized.
 
         """
-        if distance_key not in self._mudata.obsp.keys():
-            raise KeyError(f"{distance_key} not in data.obsp")
-        if knn_key not in self._mudata.uns.keys():
-            raise KeyError(f"{knn_key} not in data.uns")
+        _deprecated_key_arg("knn_key", knn_key, "key", key)
+        _deprecated_key_arg("distance_key", distance_key, "key", key)
 
-        wnn = int(self._mudata.uns[knn_key]["params"]["n_neighbors"])
+        record_key = knn_key if knn_key is not None else (key if key is not None else "wnn")
+        if record_key not in self._mudata.uns.keys():
+            raise KeyError(f"{record_key} not in data.uns")
+
+        if distance_key is None:
+            distance_key = _resolve_graph_key(self._mudata, record_key, "distances")
+        elif distance_key not in self._mudata.obsp.keys():
+            raise KeyError(f"{distance_key} not in data.obsp")
+
+        wnn = int(self._mudata.uns[record_key]["params"]["n_neighbors"])
         if knn is None or knn > wnn:
             knn = wnn
 

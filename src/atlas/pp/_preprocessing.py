@@ -243,13 +243,12 @@ def knn(
     random_state: int = 42,
     copy: bool = False,
 ) -> MuData:
-    """Build a nearest neighbor graph over an already integrated representation.
+    """Build a nearest neighbor graph over an already integrated representation via :func:`scanpy.pp.neighbors`
 
-    Intended for a representation that already combines the modalities, such as the output
-    of a joint embedding method. There is a single view, so no weighting is performed and
+    Intended for a precombined representatio stored in ``mudata.obsm``.
+
+    There is a single view, so no weighting is performed and
     no per-modality weights are produced.
-
-    No embedding is computed.
 
     Parameters
     ----------
