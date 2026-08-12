@@ -47,6 +47,7 @@ Preprocessing utilities for multimodal single-cell data based on
 .. autosummary::
     :toctree: generated
 
+    pl.embedding
     pl.plot_tree
     pl.plot_trends
     pl.plot_fate_probabilities

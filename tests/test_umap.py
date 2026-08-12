@@ -133,13 +133,15 @@ def test_modality_count_does_not_decide_the_route(spy):
 
 
 def test_result_is_stored_where_plotting_looks():
-    """scvelo and scFates prepend ``X_`` to the basis they are given, so the embedding has
-    to sit under the prefixed name whichever route produced it."""
+    """The plotting entry points prepend ``X_`` to the basis they are given, so the
+    embedding has to sit under the prefixed name whichever route produced it."""
     for mdata in (_wnn_mudata(), _representation_mudata()):
         umap(mdata)
         assert "X_umap" in mdata.obsm
 
-    assert atlas.pl.plot_embedding.__defaults__[0] == "X_umap"
+    # `atlas.pl.embedding` resolves its basis with or without the prefix, so either form
+    # of its default names the key stored above.
+    assert atlas.pl.embedding.__defaults__[0] in {"umap", "X_umap"}
 
 
 def test_nothing_else_is_left_behind():
@@ -316,4 +318,4 @@ def test_plotting_finds_the_embedding_without_being_told_where_it_is():
     mdata = _wnn_mudata()
     umap(mdata)
     mdata.obs["pseudotime"] = np.linspace(0, 1, CELLS)
-    atlas.pl.plot_embedding(mdata, show=False)
+    atlas.pl.embedding(mdata, color="pseudotime", show=False)

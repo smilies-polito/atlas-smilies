@@ -28,6 +28,14 @@ def plot_embedding(
     This function creates a scatter plot of cells in a specified embedding space
     (e.g. UMAP, PCA) using values from `mudata.obs` for coloring.
 
+    .. deprecated:: 1.1.0
+       This function is deprecated and will be removed in version 2.0.0.
+       It is retained in version 1.1.0 for backwards compatibility.
+
+       It is superseded by :func:`~atlas.pl.embedding`, which draws the ``MuData``
+       directly, resolves any stored embedding, colors by observations or by features
+       of any modality, draws several keys in one call, and returns its axes.
+
     Parameters
     ----------
     mudata
@@ -58,6 +66,13 @@ def plot_embedding(
     UserWarning
         If `embedding_key` is not found in `mudata.obsm`.
     """
+    warnings.warn(
+        "`plot_embedding` is deprecated since version 1.1.0 and will be "
+        "removed in version 2.0.0. Use `atlas.pl.embedding` instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     if observation not in mudata.obs.columns:
         warnings.warn(f"WARNING: {observation} not a valid cell metadata", stacklevel=2)
         return
