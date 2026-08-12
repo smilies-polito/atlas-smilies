@@ -10,10 +10,6 @@ from .utils import _safe_mudata
 
 
 def _per_modality(value, modalities: Sequence[str], name: str) -> dict:
-    """Resolve a scalar-or-mapping parameter into one value per modality.
-
-    A single value applies to every modality; a mapping supplies each one its own.
-    """
     if isinstance(value, Mapping):
         missing = [m for m in modalities if m not in value]
         if missing:
@@ -39,6 +35,7 @@ def _write_graph(target: MuData, source, key: str, route: str, **provenance) -> 
     ValueError
         If ``source`` and ``target`` do not agree on their observations, which would leave
         the graph's indices silently misaligned with the object.
+
     """
     if key not in source.uns:
         raise KeyError(f"{key} not in the computed object's .uns")
@@ -73,8 +70,8 @@ def compute_gene_activity(
 ) -> MuData:
     """Derive a gene activity modality from chromatin accessibility.
 
-    Counts fragments over the supplied features, then normalizes and reduces the result,
-    exactly as :func:`atlas.pp.preprocessing` does. No neighbour graph is constructed.
+    This function exploits :func:`muon.atac.tl.count_fragments_features`.
+    Results are normalized and PCA is computed.
 
     Parameters
     ----------
@@ -111,6 +108,7 @@ def compute_gene_activity(
         If ``atac_key`` is not a modality of ``mudata``.
     ValueError
         If the fragment file cannot be located, or ``features`` is not provided.
+
     """
     data = mudata.copy() if copy else mudata
 
@@ -196,6 +194,7 @@ def wnn(
     -----
     A modality that already carries a neighbor graph keeps it rather than having one
     recomputed.
+
     """
     data = mudata.copy() if copy else mudata
     modalities = tuple(modalities)
@@ -277,6 +276,7 @@ def knn(
     ------
     KeyError
         If ``use_rep`` is not present in ``mudata.obsm``.
+
     """
     data = mudata.copy() if copy else mudata
 

@@ -2,19 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-## Release
-### [1.0.0] - 2026-05-25
-First public release
-
 ## Unreleased
-
-## Release [1.1.0] - 2026-08-11
 ### Added
 - `atlas.tl.PalantirExtension.early_cell` selects the initial cell required by `atlas.tl.PalantirExtension.run` from the multiscale diffusion space, so it no longer has to be picked by hand. Selection is delegated to `palantir.utils.early_cell`, which cannot accept a `MuData` directly. The expensive fallback remains opt-in through `fallback_seed` and warns before it runs, since it costs as much as `run` itself.
+- `atlas.pp.gene_activity` derives a gene activity modality from scATAC-seq without building any graph, so it can be run, inspected or replaced on its own.
+- `atlas.pp.wnn` builds a weighted nearest neighbor graph over **any** two modalities, rather than only gene expression and gene activity. Neighborhood size, number of components and representation accept either a single value for every modality or a per-modality mapping.
+- `atlas.pp.knn` builds a nearest neighbor graph over an already integrated representation, such as the output of a joint embedding method, for which no weighting applies.
 
 ### Changed
 - The temporary `AnnData` objects built to interface with CellRank and Palantir are now constructed in `atlas.tl.utils` rather than inside the extension classes. Internal reorganisation with no change in behaviour.
 - `atlas.tl.PalantirExtension` and `atlas.tl.CellRankExtension` now live in `atlas/tl/palantir\_extension.py` and `atlas/tl/cellrank\_extension.py` respectively, replacing `atlas/tl/trajectory\_inference.py`. Both remain importable from `atlas.tl` as before.
+
+### Notes
+- The new graph entry points annotate the object they are given rather than returning a restricted one, so no modality is removed. Where restricting which modalities take part is required, it happens on a throwaway object.
+- The new graph entry points compute **no** embedding, matching the convention that neighbor construction and embedding are separate steps. Trajectory inference reads only the graph and is unaffected; `atlas.pl` defaults to an embedding these routes do not produce.
+
+## Release
+### [1.0.0] - 2026-05-25
+First public release
 
 ## [0.0.5] - 2026-04-01
 ### Fixed
