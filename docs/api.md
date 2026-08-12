@@ -30,6 +30,7 @@ Preprocessing utilities for multimodal single-cell data based on
 
     tl.PalantirExtension
     tl.CellRankExtension
+    tl.umap
     tl.pearson_correlation
     tl.spearman_correlation
     tl.fate_concentration_index

@@ -8,11 +8,12 @@ All notable changes to this project will be documented in this file.
 - `atlas.pp.compute_gene_activity` derives a gene activity modality from scATAC-seq without building any graph, so it can be run, inspected or replaced on its own. The number of components used for its reduction is settable through `n_comps`.
 - `atlas.pp.wnn` builds a weighted nearest neighbor graph over **any** two modalities, rather than only gene expression and gene activity. Neighborhood size, number of components and representation accept either a single value for every modality or a per-modality mapping.
 - `atlas.pp.knn` builds a nearest neighbor graph over an already integrated representation, such as the output of a joint embedding method, for which no weighting applies. It stores the graph under `"joint"` by default, rather than the `"wnn"` used by `atlas.pp.wnn`, so that a graph built without weighting is not filed under a name denoting one.
-
+- `atlas.tl.umap` embeds a graph built using `atlas.pp.wnn` or `atlas.pp.knn` into an UMAP. The function is compatible with graphs computed via ATLAS and extend `muon.tl.umap` or `scanpy.tl.umap` depending whether the graph was computed using multiple modalities or a single precomputed matrix. When `neighbors_key` is not given the graph is found rather than assumed: the two entry points store under different keys, so no default would be right for both. The embedding is always stored in `.obsm["X_umap"]`, where `atlas.pl` looks for it.
 - `atlas.tl.PalantirExtension.compute_kernel` and `atlas.tl.CellRankExtension.compute_kernel` accept `key`, naming the record under which a graph is stored. The matrices they need, and the neighborhood size, are resolved from that record, so the key alone identifies a graph however it was built. Names are looked up in the record rather than assembled from the key, falling back to the conventional name when the record omits one.
 
 ### Deprecated
 - `knn_key` and `distance_key` in `atlas.tl.PalantirExtension.compute_kernel`, and `connectivity_key` in `atlas.tl.CellRankExtension.compute_kernel`, are superseded by `key`. They continue to behave exactly as before and now emit a `FutureWarning`; they are removed in 2.0.0. Supplying one together with `key` raises, since which graph was intended cannot be determined from both.
+- `atlas.pp.preprocessing` is superseded by `atlas.pp.wnn`, `atlas.pp.knn`, `atlas.pp.compute_gene_activity` and `atlas.tl.umap`. It continues to behave exactly as before and now emit a `FutureWarning`; it is removed in 2.0.0.
 
 ### Changed
 - The temporary `AnnData` objects built to interface with CellRank and Palantir are now constructed in `atlas.tl.utils` rather than inside the extension classes. Internal reorganisation with no change in behaviour.
@@ -23,7 +24,7 @@ All notable changes to this project will be documented in this file.
 - The new graph entry points compute **no** embedding, matching the convention that neighbor construction and embedding are separate steps. Trajectory inference reads only the graph and is unaffected; `atlas.pl` defaults to an embedding these routes do not produce.
 
 ## Release
-### [1.0.0] - 2026-05-25
+## [1.0.0] - 2026-05-25
 First public release
 
 ## [0.0.5] - 2026-04-01
