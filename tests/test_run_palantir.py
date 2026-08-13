@@ -26,7 +26,10 @@ def _create_mudata() -> MuData:
     rna.var_names, act.var_names = GENES, ACTIVITY_VAR
 
     mudata = MuData({"rna": rna, "activity": act})
-    mudata.obs = CLUSTERS
+    # Copied, not shared: assigning the module-level frame makes `mudata.obs` *be* it, so
+    # `run` writing its output columns mutates the constant and every later call to this
+    # helper returns a fixture already carrying the previous run's results.
+    mudata.obs = CLUSTERS.copy()
 
     # mock wnn distances
     rows = np.repeat(np.arange(len(CELLS)), K)
@@ -40,9 +43,11 @@ def _create_mudata() -> MuData:
 
     mudata.uns["wnn"] = {"params": {"n_neighbors": K}}
 
-    # mock multiscale space
-    mudata.obsm["multiscale"] = MULTISCALE
-    mudata.obsm["eigenvectors"] = EIGENVECTORS
+    # mock multiscale space, copied for the same reason: nothing writes to these today, but
+    # a fixture that hands out references to module-level state is one dependency away from
+    # the same problem.
+    mudata.obsm["multiscale"] = MULTISCALE.copy()
+    mudata.obsm["eigenvectors"] = EIGENVECTORS.copy()
     return mudata
 
 
