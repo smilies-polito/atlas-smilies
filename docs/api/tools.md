@@ -9,4 +9,5 @@ Additional tools
     atlas.tl.umap
     atlas.tl.reset_state_colors
     atlas.tl.migrate_states
+    atlas.tl.MultiLineageGAM
 ```

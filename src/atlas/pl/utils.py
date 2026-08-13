@@ -1,8 +1,12 @@
 import warnings
+from collections.abc import Mapping
 
 import numpy as np
+import pandas as pd
 from muon import MuData
 from pygam import LinearGAM, s
+
+from atlas.tl.utils import _KEY_REMOVAL_VERSION, _LEGACY_PALETTE_KEY
 
 
 def _weighted_quantile(x: np.ndarray, w: np.ndarray, q: float) -> float:
@@ -212,3 +216,52 @@ class MultiBranchGAM:
             }
 
         self._predictions = results
+
+
+def _state_colors(mudata: MuData, kind: str) -> dict[str, str]:
+    """The colour recorded for each state of ``kind``, from whichever layout records them.
+
+    Supports the plotting entry points rather than any one of them: `trends` uses it now, and
+    the replacements for `plot_fate_probabilities` and `plot_tree` will use it for the same
+    purpose.
+
+    Which layout is used is decided by **presence**. The current one records colours as a list
+    in ``uns[f"{kind}_colors"]`` aligned to the categories of ``obs[kind]``, so the two are
+    read together and paired **by name**; the superseded one records a mapping under
+    ``uns["fate_state_colors"]``.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object.
+    kind
+        Which kind of state to resolve, e.g. ``"terminal_states"``.
+
+    Returns
+    -------
+    Mapping of state name to colour. Empty when the object records no colour under either
+    layout.
+    """
+    column = mudata.obs.get(kind)
+    colors = mudata.uns.get(f"{kind}_colors")
+
+    if column is not None and isinstance(column.dtype, pd.CategoricalDtype) and colors is not None:
+        categories = [str(name) for name in column.cat.categories]
+        colors = list(colors)
+        if len(colors) == len(categories):
+            return dict(zip(categories, colors, strict=True))
+
+    superseded = mudata.uns.get(_LEGACY_PALETTE_KEY)
+    if isinstance(superseded, Mapping) and superseded:
+        warnings.warn(
+            f"`mudata.uns['{_LEGACY_PALETTE_KEY}']` is superseded by "
+            f"`mudata.uns['{kind}_colors']` and will be removed in {_KEY_REMOVAL_VERSION}. It is "
+            f"being read for this call. Run `atlas.tl.migrate_states` to record this object's "
+            f"colours in the current form; a stored key cannot announce this when it is read, so "
+            f"nothing else will.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return {str(name): color for name, color in superseded.items()}
+
+    return {}

@@ -231,6 +231,13 @@ def plot_trends(
     For each branch, the function displays the fitted GAM curve together with its
     confidence interval.
 
+    .. deprecated:: 1.1.0
+       This function is deprecated and will be removed in version 2.0.0.
+       It is retained in version 1.1.0 for backwards compatibility.
+
+       It is superseded by :func:`~atlas.pl.trends`. The fitting procedure this
+       function uses will be removed with it.
+
     Parameters
     ----------
     mudata
@@ -263,6 +270,13 @@ def plot_trends(
         The function generates a matplotlib figure and optionally saves it.
 
     """
+    warnings.warn(
+        "`plot_trends` is deprecated since version 1.1.0 and will be "
+        "removed in version 2.0.0. Use `atlas.pl.trends` instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     if ptf not in mudata["rna"].var_names:
         raise KeyError(f"TF {ptf} not available")
     if gene not in mudata["activity"].var_names:

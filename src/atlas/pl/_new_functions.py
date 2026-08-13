@@ -1,9 +1,16 @@
+import os
 from collections.abc import Sequence
+from math import ceil
 
+import matplotlib.pyplot as plt
 import muon as mu
 from anndata import AnnData
 from matplotlib.axes import Axes
 from muon import MuData
+
+from atlas.tl import MultiLineageGAM
+
+from .utils import _state_colors
 
 #: Entry point that produces the embedding this module draws by default.
 _EMBEDDING_PRODUCER = "`atlas.tl.umap`"
@@ -162,3 +169,184 @@ def embedding(
         _resolve_color(mudata, color, use_raw)
 
     return mu.pl.embedding(mudata, basis=basis, color=color, use_raw=use_raw, layer=layer, **kwargs)
+
+
+#: Colour given to a lineage the object records none for. Matches the entry point this
+#: replaces, which draws such a lineage grey without comment.
+_DEFAULT_LINEAGE_COLOR = "grey"
+
+
+def trends(
+    mudata: MuData,
+    ptf: str,
+    genes: str | Sequence[str],
+    *,
+    time_key: str = "pseudotime",
+    fate_probability_key: str = "fate_probabilities",
+    lineages: str | Sequence[str] | None = None,
+    n_splines: int = 8,
+    n_points: int = 200,
+    ncols: int = 2,
+    sharex: bool = False,
+    figsize: tuple[float, float] | None = None,
+    return_models: bool = False,
+    show: bool | None = None,
+    save: str | None = None,
+) -> list[Axes] | dict:
+    """Plot lineage-specific dynamics of transcription factor expression and gene activity.
+
+    Trends are fit using :class:`~atlas.tl.MultiLineageGAM`. For each plot, the function displays the fitted dynamics together with its confidence.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object carrying pseudotime, fate probabilities, and the
+        ``"rna"`` and ``"activity"`` modalities.
+    ptf
+        Name of the transcription factor in the ``"rna"`` modality.
+    genes
+        Name, or names, of the genes in the ``"activity"`` modality.
+    time_key
+        Key in ``mudata.obs`` containing pseudotime values.
+    fate_probability_key
+        Key in ``mudata.obsm`` containing the fate probabilities. Its columns name the
+        lineages.
+    lineages
+        Subset of lineages to draw. When ``None`` every lineage that could be fitted is drawn.
+    n_splines
+        Number of splines used in each GAM.
+    n_points
+        Number of points at which each curve is evaluated.
+    ncols
+        Number of panels placed side by side. ``ncols=1`` stacks them in a single column,
+        which for one gene is the arrangement :func:`~atlas.pl.plot_trends` produces.
+    sharex
+        Whether the panels share their pseudotime axis. They are independent by default.
+    figsize
+        Size of the figure. When ``None`` it is derived from the number of panels.
+    return_models
+        Whether to return the fitted models rather than the axes.
+    show
+        Whether to show the figure. When ``None`` the figure is shown unless something is
+        being returned.
+    save
+        Filename to save the figure under, in ``figures/``. Honoured whether or not anything
+        is returned.
+
+    Returns
+    -------
+    The axes drawn on, or the fitted models when ``return_models`` is set — keyed by lineage,
+    the arrangement :class:`~atlas.tl.MultiLineageGAM` exposes.
+
+    Raises
+    ------
+    KeyError
+        If the factor, a gene, ``time_key`` or ``fate_probability_key`` is absent.
+    ValueError
+        If the object records no lineage, if a named lineage is not among those recorded, or
+        if every lineage was skipped for having negligible weight. The three are reported
+        apart, an object that records nothing being a different matter from a mistyped name.
+
+    Examples
+    --------
+    >>> atlas.pl.trends(mudata, ptf="GATA1", genes="KLF1")
+    >>> atlas.pl.trends(mudata, ptf="GATA1", genes=["KLF1", "HBB"], ncols=1)
+    >>> models = atlas.pl.trends(mudata, ptf="GATA1", genes="KLF1", return_models=True)
+    """
+    modalities = ["rna", "activity"]
+    missing = [mod for mod in modalities if mod not in mudata.mod]
+    if missing:
+        raise KeyError(f"missing required modalities in MuData: {', '.join(missing)}")
+
+    genes = [genes] if isinstance(genes, str) else list(genes)
+
+    if fate_probability_key not in mudata.obsm:
+        raise KeyError(f"{fate_probability_key} not in mudata.obsm")
+    recorded = list(mudata.obsm[fate_probability_key].columns)
+    if not recorded:
+        raise ValueError(
+            f"`mudata.obsm['{fate_probability_key}']` records no lineage, so there is nothing "
+            f"to draw; run a trajectory inference first."
+        )
+
+    model = MultiLineageGAM(
+        mudata=mudata,
+        ptf=ptf,
+        genes=genes,
+        time_key=time_key,
+        fate_prob_key=fate_probability_key,
+        n_splines=n_splines,
+    )
+    model.fit()
+    model.predict(n_points=n_points)
+    predictions = model.predictions
+
+    if not predictions:
+        raise ValueError(
+            f"every lineage ({', '.join(map(str, recorded))}) was skipped for having negligible "
+            f"weight, so there is nothing to draw. The object does record lineages; no cell "
+            f"transitions towards any of them."
+        )
+
+    if lineages is None:
+        drawn = list(predictions)
+    else:
+        drawn = [lineages] if isinstance(lineages, str) else list(lineages)
+        unknown = [name for name in drawn if name not in predictions]
+        if unknown:
+            raise ValueError(
+                f"no lineage called {', '.join(map(repr, unknown))}; those available are "
+                f"{', '.join(map(repr, predictions))}."
+            )
+
+    colors = _state_colors(mudata, "terminal_states")
+
+    n_panels = 1 + len(genes)
+    ncols = max(1, min(ncols, n_panels))
+    nrows = ceil(n_panels / ncols)
+    if figsize is None:
+        figsize = (5.0 * ncols, 3.5 * nrows)
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, sharex=sharex, squeeze=False)
+    axes = list(axes.ravel())
+
+    for lineage in drawn:
+        pred = predictions[lineage]
+        t = pred["t_grid"]
+        color = colors.get(lineage, _DEFAULT_LINEAGE_COLOR)
+
+        axes[0].plot(t, pred["gex"], color=color, lw=2, label=lineage)
+        axes[0].fill_between(t, pred["gex_lower"], pred["gex_upper"], color=color, alpha=0.2)
+
+        for position, gene in enumerate(genes, start=1):
+            curve = pred["genes"][gene]
+            axes[position].plot(t, curve["act"], color=color, lw=2, label=lineage)
+            axes[position].fill_between(t, curve["act_lower"], curve["act_upper"], color=color, alpha=0.2)
+
+    axes[0].set_ylabel(f"{ptf} expression (z-score)")
+    axes[0].set_title(ptf)
+    for position, gene in enumerate(genes, start=1):
+        axes[position].set_ylabel(f"{gene} activity (z-score)")
+        axes[position].set_title(gene)
+    for ax in axes[:n_panels]:
+        ax.set_xlabel(time_key)
+
+    # positions the panels do not fill are removed rather than drawn empty
+    for ax in axes[n_panels:]:
+        ax.remove()
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+    fig.tight_layout()
+
+    if save is not None:
+        figure_path = os.path.join(os.getcwd(), "figures")
+        os.makedirs(figure_path, exist_ok=True)
+        fig.savefig(os.path.join(figure_path, f"trends_{save}.png"), bbox_inches="tight", dpi=300)
+
+    if show is None:
+        show = not return_models
+    if show:
+        plt.show()
+
+    return model.models if return_models else axes[:n_panels]
