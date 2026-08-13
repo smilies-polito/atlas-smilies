@@ -55,7 +55,7 @@ def preprocessing(
     Parameters
     ----------
     mudata
-            MuData object containing at least the ``"rna"`` modality and either
+            MuData object containing at least the ``rna`` modality and either the ``atac`` or ``activity``
     n_pcs_rna
             Number of principal components used for the RNA kNN graph.
     n_pcs_act
@@ -73,13 +73,15 @@ def preprocessing(
             is used.
     n_bandwidth_neighbors
             Number of neighbors used for bandwidth estimation in the WNN graph,
-            as in :func:`muon.pp.neighbors`.
+
+            See in :func:`muon.pp.neighbors`.
+
     n_multineighbors
             Number of neighbors used for multimodal neighbor construction,
             as in :func:`muon.pp.neighbors`.
     metric
             Distance metric used for neighbor graph construction,
-            as in :func:``muon.pp.neighbors``.
+            as in :func:`muon.pp.neighbors`.
     stranded
             Whether to consider strand information when computing gene activity.
     fragment_path
