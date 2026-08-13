@@ -593,3 +593,45 @@ def migrate_states(mudata: MuData) -> None:
         palette.setdefault(str(name), color)
 
     _assign_state_colors(mudata)
+
+
+def _states_mapping(mudata: MuData, kind: str) -> dict[str, list[str]]:
+    """The cells belonging to each state of ``kind``, from whichever layout records them.
+
+    Takes the kind rather than assuming terminal states, so the other consumer of a superseded
+    state key — the plotting entry point that reads the initial states — can resolve the same
+    way without restating the fallback or its warning.
+
+    Which layout is used is decided by **presence**, never by which holds content. An
+    annotation that records no state means there are no states of that kind, and a caller
+    reporting that is giving an answer; falling through to the superseded record on that basis
+    would silently turn the answer into a lookup somewhere else.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object.
+    kind
+        Which kind of state to resolve, e.g. ``"terminal_states"``.
+
+    Returns
+    -------
+    Mapping of state name to the names of the cells belonging to it. Empty when the object
+    records no state of that kind under either layout.
+    """
+    if kind in mudata.obs.columns:
+        return _invert_assignment(mudata.obs[kind])
+
+    superseded = mudata.uns.get(kind)
+    if isinstance(superseded, Mapping) and superseded:
+        warnings.warn(
+            f"`mudata.uns['{kind}']` is superseded by `mudata.obs['{kind}']` and will be "
+            f"removed in {_KEY_REMOVAL_VERSION}. It is being read for this call. Run "
+            f"`atlas.tl.migrate_states` to record this object's states in the current form; "
+            f"a stored key cannot announce this when it is read, so nothing else will.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return {str(name): list(cells) for name, cells in superseded.items()}
+
+    return {}

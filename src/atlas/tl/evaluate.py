@@ -6,6 +6,8 @@ from muon import MuData
 from scipy.spatial.distance import cdist
 from scipy.stats import bootstrap, pearsonr, permutation_test, spearmanr
 
+from .utils import _states_mapping
+
 
 def pearson_correlation(
     mudata: MuData, key1: str, key2: str, seed: int = 42, n_resamples: int = 10000, confidence_level: float = 0.95
@@ -222,7 +224,7 @@ def fate_concentration_index(
     probabilities for each observation:
 
     .. math::
-        C_i = \\sum_{j} p_{ij}^2
+        C_i = \sum_{j} p_{ij}^2
 
     where :math:`p_{ij}` represents the probability of cell :math:`i`
     belonging to fate :math:`j`. This metric captures how concentrated
@@ -484,7 +486,7 @@ def terminal_state_silhouette(
 
     .. math::
 
-        s_i = \\frac{b_i - a_i}{\\max(a_i, b_i)}
+        s_i = \frac{b_i - a_i}{\max(a_i, b_i)}
 
     where :math:`a_i` is the intra-terminal distance and :math:`b_i` is the
     nearest-terminal distance.
@@ -493,9 +495,9 @@ def terminal_state_silhouette(
 
     .. math::
 
-        S = \\frac{\\sum_i \\tau_i^\\alpha s_i}{\\sum_i \\tau_i^\\alpha}
+        S = \frac{\sum_i \tau_i^\alpha s_i}{\sum_i \tau_i^\alpha}
 
-    where :math:`\\tau_i` is the pseudotime of cell :math:`i`.
+    where :math:`\tau_i` is the pseudotime of cell :math:`i`.
 
 
     Parameters
@@ -566,14 +568,14 @@ def terminal_pseudotime_enrichment(mudata: MuData, time_key: str = "pseudotime",
     and the global median pseudotime across all cells:
 
     .. math::
-        E_{ts} = \\mathrm{median}(m_{ts}) - \\mathrm{median}(m_{all})
+        E_{ts} = \mathrm{median}(m_{ts}) - \mathrm{median}(m_{all})
 
     where :math:`m` is either the raw pseudotime or its normalized rank
     transformation. The final score is the average enrichment across all
     terminal states:
 
     .. math::
-        E = \\frac{1}{T} \\sum_{ts} E_{ts}
+        E = \frac{1}{T} \sum_{ts} E_{ts}
 
     where :math:`T` is the number of terminal states.
 
@@ -606,9 +608,6 @@ def terminal_pseudotime_enrichment(mudata: MuData, time_key: str = "pseudotime",
 
     Notes
     -----
-    Terminal states are expected to be stored in
-    ``mudata.uns["terminal_states"]`` as a dictionary mapping each terminal
-    state name to a list of cell identifiers.
     Returns NaN if no terminal states are found.
 
     """
@@ -616,7 +615,7 @@ def terminal_pseudotime_enrichment(mudata: MuData, time_key: str = "pseudotime",
         raise KeyError(f"{time_key} not in mudata.obs.")
     pseudotime = mudata.obs[time_key]
 
-    terminal_states = mudata.uns.get("terminal_states", {})
+    terminal_states = _states_mapping(mudata, "terminal_states")
     if not bool(terminal_states):
         warnings.warn("No terminal states available, returning NaN", stacklevel=2)
         return np.nan
