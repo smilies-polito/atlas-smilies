@@ -11,8 +11,10 @@ from .utils import (
     _assign_state_colors,
     _cellrank_anndata,
     _deprecated_key_arg,
+    _intermediate_states,
     _invert_assignment,
     _resolve_graph_key,
+    _resolve_overlap,
     compute_entropy,
 )
 
@@ -270,10 +272,24 @@ class CellRankExtension:
         Updates the original ``MuData`` object:
 
             - Fate probabilities stored as a :class:`pandas.DataFrame` in ``.obsm["fate_probabilities"]``.
+            - States as categorical columns of ``.obs``: ``"initial_states"``, ``"terminal_states"``
+              and ``"macrostates"``. A cell carries the name of the state it belongs to, or no
+              value where it belongs to none. Separate columns per kind are what let a cell belong
+              to states of more than one kind, which ``allow_overlap`` permits.
+            - One colour per state name, in ``.uns["initial_states_colors"]``,
+              ``.uns["terminal_states_colors"]`` and ``.uns["macrostates_colors"]``, each aligned to
+              its column's categories, and in ``.uns["atlas_state_palette"]``.
             - Initial states stored in ``.uns["initial_states"]``.
             - Terminal states stored in ``.uns["terminal_states"]``.
             - Intermediate states (if inferred) stored in ``.uns["intermediate_states"]``.
             - State-specific colors stored in ``.uns["fate_state_colors"]``.
+
+              .. deprecated:: 1.1.0
+                 The four ``.uns`` entries above are superseded by the columns and colour lists,
+                 and will be removed in version 2.0.0. They are retained in version 1.1.0 for
+                 backwards compatibility. A stored key cannot warn when it is read, so
+                 :func:`~atlas.tl.migrate_states` converts an object saved by an earlier version.
+
             - Entropy measures (e.g. Shannon entropy, KL divergence) stored in ``.obs``.
 
         Raises
@@ -289,6 +305,11 @@ class CellRankExtension:
         If both ``initial_states`` and ``terminal_states`` are provided, no automatic
         state inference is performed. Otherwise, macrostates and lineage-driving states
         are inferred from the data.
+
+        ``.obs["macrostates"]`` carries a genuine coarse-graining only where one was computed,
+        which is when the states are inferred. Where they are supplied, ``compute_macrostates``
+        is never called and the column records the union of the states given instead.
+
         """
         if not hasattr(self, "kernel"):
             raise AttributeError("Kernel not found. Run compute_kernel first.")
@@ -329,15 +350,24 @@ class CellRankExtension:
             _G.fate_probabilities.X, index=self.mudata.obs_names, columns=_G.fate_probabilities.names
         )
 
-        self.mudata.uns["initial_states"] = _invert_assignment(_G.initial_states)
-        self.mudata.uns["terminal_states"] = _invert_assignment(_G.terminal_states)
+        # GPCCA hands back categorical Series over every cell, which is the form the object
+        # records; they are kept rather than converted into dictionaries and back.
+        _initial, _terminal = _G.initial_states, _G.terminal_states
+        self.mudata.obs["initial_states"] = _initial
+        self.mudata.obs["terminal_states"] = _terminal
 
         if terminal_states is None and initial_states is None:
-            intermediate = _G.macrostates[(_G.initial_states.isna()) & (_G.terminal_states.isna())]
-            intermediate = intermediate.cat.remove_unused_categories()
-            self.mudata.uns["intermediate_states"] = _invert_assignment(intermediate)
+            # A coarse-graining was computed, so it is what `macrostates` records.
+            self.mudata.obs["macrostates"] = _G.macrostates
         else:
-            self.mudata.uns["intermediate_states"] = {}
+            # `compute_macrostates` was never called on this branch. The union of the states
+            # the caller supplied is recorded instead, by the same rule `PalantirExtension`
+            # uses, so the column is present however the object was produced.
+            self.mudata.obs["macrostates"] = _resolve_overlap(_initial, _terminal)
+
+        self.mudata.uns["initial_states"] = _invert_assignment(_initial)
+        self.mudata.uns["terminal_states"] = _invert_assignment(_terminal)
+        self.mudata.uns["intermediate_states"] = _intermediate_states(self.mudata)
 
         self._fate_key = "fate_probabilities"
         _assign_state_colors(self.mudata)

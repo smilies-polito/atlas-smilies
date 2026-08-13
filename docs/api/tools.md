@@ -7,4 +7,6 @@ Additional tools
     :toctree: generated
 
     atlas.tl.umap
+    atlas.tl.reset_state_colors
+    atlas.tl.migrate_states
 ```

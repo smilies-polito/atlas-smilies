@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -99,10 +101,45 @@ def test_run_with_clusters():
     assert "initial_states" in mdata.uns
     assert len(mdata.uns["initial_states"]) == 1
     assert "terminal_states" in mdata.uns
+    # `cluster_key` names states after the cluster and nothing else. Where several states
+    # would take one cluster's name they are disambiguated with a `_1`, `_2` … suffix, so the
+    # cluster is the stem of the name rather than the whole of it.
     for k, v in mdata.uns["initial_states"].items():
-        assert k in ["red", "blue"]
+        assert re.sub(r"_\d+$", "", k) in ["red", "blue"]
         assert v[0] in mdata.obs_names
     for k, v in mdata.uns["terminal_states"].items():
-        assert k in ["red", "blue"]
+        assert re.sub(r"_\d+$", "", k) in ["red", "blue"]
         assert v[0] in mdata.obs_names
     assert "fate_probabilities" in mdata.obsm
+
+
+def test_states_are_recorded_as_columns_with_colours():
+    """The layout the wider ecosystem reads, written alongside the superseded dictionaries."""
+    pext = PalantirExtension(_create_mudata())
+    pext.run(
+        early_cell=EARLY_CELL,
+        knn=10,
+        cluster_key="cluster",
+        num_waypoints=NUM_WAYPOINTS,
+        eigvec_key="eigenvectors",
+        eigvec_multi_key="multiscale",
+    )
+    mdata = pext.mudata
+
+    for kind in ("initial_states", "terminal_states", "macrostates"):
+        column = mdata.obs[kind]
+        assert isinstance(column.dtype, pd.CategoricalDtype)
+        assert column.notna().any()
+        # one colour per category, in the categories' own order
+        assert len(mdata.uns[f"{kind}_colors"]) == len(column.cat.categories)
+
+    # `macrostates` is the union of the other kinds, Palantir computing no coarse-graining
+    assert set(mdata.obs["macrostates"].cat.categories) == set(mdata.uns["initial_states"]) | set(
+        mdata.uns["terminal_states"]
+    )
+
+    # a state named under both kinds carries one colour
+    palette = mdata.uns["atlas_state_palette"]
+    for kind in ("initial_states", "terminal_states", "macrostates"):
+        for position, name in enumerate(mdata.obs[kind].cat.categories):
+            assert mdata.uns[f"{kind}_colors"][position] == palette[name]

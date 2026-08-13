@@ -7,7 +7,16 @@ import pandas as pd
 from muon import MuData
 from scipy.sparse import csr_matrix, find
 
-from .utils import _assign_state_colors, _deprecated_key_arg, _palantir_anndata, _resolve_graph_key, compute_entropy
+from .utils import (
+    _assign_state_colors,
+    _deprecated_key_arg,
+    _disambiguate_names,
+    _palantir_anndata,
+    _resolve_graph_key,
+    _resolve_overlap,
+    _states_to_column,
+    compute_entropy,
+)
 
 #: Key under which :func:`palantir.utils.fallback_terminal_cell` looks up the multiscale
 #: space. Palantir below 1.4.5 does not forward the ``eigvec_key`` of
@@ -428,14 +437,23 @@ class PalantirExtension:
         early_cell
             Barcode identifier of the initial cell for pseudotime inference.
         cluster_key
-            Identifier in `obs` containing information about cells, optional.
+            Column of ``mudata.obs`` whose values name the inferred states if specified
+            , instead of :cite:`palantir` default of naming them by barcode.
+            Where several states would take one name they
+            are disambiguated with a ``_suffix``.
+
+            .. versionchanged:: 1.1.0
+               Previously, terminal cells sharing a value of this column were merged into a
+               single state and their fate probabilities added together, so this parameter
+               changed how many fates were reported and what they were worth. It now only
+               renames, and ``.obsm[fate_prob_key]`` has one column per terminal state.
         terminal_states
             Terminal states can be defined by the user. When ``None``,
             terminal states are automatically inferred by the algorithm.
         knn:
             Number of nearest neighbors for graph construction in the multiscale space.
         num_waypoints:
-            Number of waypoints for trajectory inference. See the original Palantir
+            Number of waypoints for trajectory inference. See the :cite:`palantir`
             algorithm for an accurate description of the parameter.
         n_jobs:
             Parameter for parallelization.
@@ -461,13 +479,37 @@ class PalantirExtension:
         Updates the `MuData` object:
 
             - Pseudotime is added in `.obs[pseudotime_key]`.
-            - Fate probabilites, a :class:`pandas.DataFrame` of shape ``(n_cells, n_terminal_states)`` in `obsm[fate_prob_key]`.
+            - Fate probabilites stored as a :class:`pandas.DataFrame` in `obsm[fate_prob_key]`.
             - List of inferred waypoints in `.uns[waypoints_key]`.
-            - Shannon entropy and KL-divergence values, respectively, in `.obs["shannon_entropy"]` and `.obs["kl_divergence"]`.
-            - Initial and terminal cell identifiers, respectively, in `.uns["initial_states"]` and `uns["terminal_states"]`.
+            - States as categorical columns of ``.obs``: ``"initial_states"``, ``"terminal_states"``
+              and ``"macrostates"``. A cell carries the name of the state it belongs to, or no
+              value where it belongs to none. Spearate columns per kind are what let a cell belong
+              to states of more than one kind.
+            - One colour per state name, in ``.uns["initial_states_colors"]``,
+              ``.uns["terminal_states_colors"]`` and ``.uns["macrostates_colors"]``, each aligned to
+              its column's categories, and in ``.uns["atlas_state_palette"]``.
+            - Initial states are stored in `.uns["initial_states"]`
+            - Terminal states are stored in `uns["terminal_states"]`.
+            - State-specific colors stored in ``.uns["fate_state_colors"]``.
+
+              .. deprecated:: 1.1.0
+                 The three ``.uns`` entries above are superseded by the columns and colour lists,
+                 and will be removed in version 2.0.0. They are retained in version 1.1.0 for
+                 backwards compatibility. A stored key cannot warn when it is read, so
+                 :func:`~atlas.tl.migrate_states` converts an object saved by an earlier version.
+
+            - Entropy measures (e.g. Shannon entropy, KL divergence) stored in ``.obs``.
 
         Notes
         -----
+        Palantir computes no coarse-graining of its own, so ``.obs["macrostates"]`` records the
+        union of the initial and terminal states.
+
+        A terminal state here is a single landmark cell — the endpoint Palantir found for a
+        branch — so the state columns are far sparser than the equivalent from
+        :class:`~atlas.tl.CellRankExtension`, which designates a population of representative
+        cells per state. That difference belongs to the methods, not to how they are recorded.
+
         If the multiscale space identified by ``eigvec_multi_key`` is not present,
         the anisotropc kernel, the diffusion components and the multiscaled distances are inferred
         using the default parameters on the graph stored as "wnn_distances" in ``.obsp``.
@@ -504,23 +546,33 @@ class PalantirExtension:
         if isinstance(terminal_states, pd.Series):
             res.branch_probs.columns = terminal_states[res.branch_probs.columns]
 
-        # Renames inferred states according to the cell type in .obs["cluster_key"]
-        # rather by the standard default behavior of Palantir, i.e., using the barcode
+        # Names inferred states after the cell type in .obs["cluster_key"] rather than by
+        # Palantir's default, the barcode. This renames and nothing else: states are never
+        # merged because the annotation gives them the same name, which would let naming
+        # change how many fates are reported and what they are worth. Where a name is claimed
+        # by more than one state it is disambiguated, as CellRank does.
+        #
+        # Disambiguation spans the union of the initial and terminal states — the namespace
+        # `macrostates` covers — so a state belonging to both keeps one name across them.
+        _states = dict.fromkeys([early_cell, *res.branch_probs.columns])
         if cluster_key is not None and cluster_key in self._mudata.obs.columns:
             cell_to_cluster = self._mudata.obs[cluster_key]
-            terminal_states = {}
-            for cell in res.branch_probs.columns:
-                cluster = cell_to_cluster.loc[cell]
-                terminal_states.setdefault(cluster, []).append(cell)
-
-            initial_states = {cell_to_cluster.loc[early_cell]: [early_cell]}
-            res.branch_probs.columns = cell_to_cluster.loc[res.branch_probs.columns].values
-            fate_probs = res.branch_probs.T.groupby(level=0, observed=True).sum().T
-
+            _names = _disambiguate_names({cell: str(cell_to_cluster.loc[cell]) for cell in _states})
         else:
-            terminal_states = {cell: [cell] for cell in res.branch_probs}
-            initial_states = {early_cell: [early_cell]}
-            fate_probs = res.branch_probs
+            _names = {cell: str(cell) for cell in _states}
+
+        terminal_states = {_names[cell]: [cell] for cell in res.branch_probs.columns}
+        initial_states = {_names[early_cell]: [early_cell]}
+        fate_probs = res.branch_probs.rename(columns=_names)
+
+        _initial = _states_to_column(initial_states, self._mudata.obs_names)
+        _terminal = _states_to_column(terminal_states, self._mudata.obs_names)
+        self._mudata.obs["initial_states"] = _initial
+        self._mudata.obs["terminal_states"] = _terminal
+        # Palantir computes no coarse-graining, so `macrostates` records the union of the
+        # kinds it does produce, matching what `CellRankExtension` writes when it is given
+        # its states rather than inferring them.
+        self._mudata.obs["macrostates"] = _resolve_overlap(_initial, _terminal)
 
         self._mudata.uns["initial_states"] = initial_states
         self._mudata.uns["terminal_states"] = terminal_states
