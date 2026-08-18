@@ -10,3 +10,4 @@ inference
 metrics
 tools
 plots
+deprecated
