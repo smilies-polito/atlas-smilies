@@ -1,11 +1,15 @@
 import os
+import warnings
 from collections.abc import Sequence
 from math import ceil
 
 import matplotlib.pyplot as plt
 import muon as mu
+import numpy as np
+import pandas as pd
 from anndata import AnnData
 from matplotlib.axes import Axes
+from matplotlib.colors import LinearSegmentedColormap
 from muon import MuData
 
 from atlas.tl import MultiLineageGAM
@@ -350,3 +354,161 @@ def trends(
         plt.show()
 
     return model.models if return_models else axes[:n_panels]
+
+
+#: Low end of the single-fate ramp, and the colour of a cell with no fate to head for.
+_UNDECIDED_COLOR = "lightgrey"
+
+#: Entry point that computes the probabilities this figure draws.
+_FATE_PRODUCER = "`atlas.tl.CellRankExtension.compute_fate_probabilities`"
+
+
+def _fate_frame(mudata: MuData, key: str) -> pd.DataFrame:
+    """The recorded probabilities as a frame whose columns name the fates."""
+    if key not in mudata.obsm:
+        available = ", ".join(sorted(mudata.obsm)) or "nothing"
+        raise KeyError(
+            f"'{key}' not in mudata.obsm, which carries {available}; run {_FATE_PRODUCER} to compute fate probabilities"
+        )
+
+    recorded = mudata.obsm[key]
+    if isinstance(recorded, pd.DataFrame):
+        return recorded
+
+
+def fate_probabilities(
+    mudata: MuData,
+    *,
+    basis: str = "umap",
+    fate_probability_key: str = "fate_probabilities",
+    lineages: str | Sequence[str] | None = None,
+    title: str | None = None,
+    legend_loc: str | None = "right margin",
+    show: bool | None = None,
+    save: str | None = None,
+    **kwargs,
+) -> Axes | None:
+    """Plot fate probabilities on an embedding, blending each cell's two most likely fates.
+
+    This function exploits :func:`scvelo.pl.scatter`.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object carrying fate probabilities and an embedding.
+    basis
+        Name of the embedding in ``mudata.obsm``.
+    fate_probability_key
+        Key in ``mudata.obsm`` holding the probabilities. Its columns name the fates.
+    lineages
+        Subset of fates to draw. When ``None`` every recorded fate is drawn.
+    title
+        Title of the figure.
+    legend_loc
+        Where the fates are named. Defaults to ``"right margin"``, which keeps the names off
+        the cells so that nothing is occluded and no two labels can overlap. ``"on data"``
+        places each name over its own cells instead, as CellRank does. ``"best"`` or any
+        location :func:`matplotlib.axes.Axes.legend` accepts is also honoured, and ``"none"``
+        draws no names at all. A single fate is named by the title rather than a legend, there
+        being one thing to name and a colour bar already showing the scale.
+    show
+        Whether to show the figure, as in :func:`scvelo.pl.scatter`.
+    save
+        Filename to save to, as in :func:`scvelo.pl.scatter`.
+    **kwargs
+        Additional keyword arguments passed to :func:`scvelo.pl.scatter`.
+
+    Returns
+    -------
+    The axes drawn on, or ``None`` when the figure is shown or nothing could be drawn.
+
+    Raises
+    ------
+    KeyError
+        If ``basis`` names no embedding, if ``fate_probability_key`` names no probabilities, or
+        if ``lineages`` names a fate the object does not record.
+
+    Warns
+    -----
+    UserWarning
+        If any probability is not a number, in which case no figure is produced.
+
+    Notes
+    -----
+    Many fates crowd the figure: the number of diverging maps grows as ``n(n-1)/2``, and one
+    on-data label per fate can overlap in a dense embedding.
+
+    Examples
+    --------
+    >>> atlas.pl.fate_probabilities(mudata)
+    >>> atlas.pl.fate_probabilities(mudata, lineages=["Ery", "Mk"])
+    """
+    import scvelo as scv  # loaded at the point of use, not on `import atlas`
+
+    _resolve_basis(mudata, basis)
+    probabilities = _fate_frame(mudata, fate_probability_key)
+    recorded = [str(name) for name in probabilities.columns]
+
+    if lineages is None:
+        selected = recorded
+    else:
+        selected = [lineages] if isinstance(lineages, str) else [str(name) for name in lineages]
+        missing = [name for name in selected if name not in recorded]
+        if missing:
+            available = ", ".join(recorded) or "none"
+            raise KeyError(
+                f"{missing} not among the recorded fates ({available}); "
+                f"`lineages` names fates to draw, not fates to create"
+            )
+
+    if probabilities.isna().to_numpy().any():
+        affected = int(probabilities.isna().any(axis=1).sum())
+        warnings.warn(
+            f"WARNING: {affected} cell(s) carry a probability that is not a number in "
+            f"`mudata.obsm['{fate_probability_key}']`; no figure is drawn. Such a cell would be "
+            f"assigned to the fate whose probability is missing, `numpy.argmax` treating NaN as "
+            f"the largest value, and drawn indistinguishably from one whose fate was determined.",
+            stacklevel=2,
+        )
+        return None
+
+    colors = _state_colors(mudata, "terminal_states")
+    palette = [colors.get(name, _DEFAULT_LINEAGE_COLOR) for name in selected]
+
+    embedding_key = basis if basis in mudata.obsm else f"X_{basis}"
+    adata = AnnData(X=np.zeros((mudata.n_obs, 1)), obs=mudata.obs.copy())
+    adata.obsm[embedding_key] = np.asarray(mudata.obsm[embedding_key])
+    scv_basis = embedding_key[2:] if embedding_key.startswith("X_") else embedding_key
+
+    kwargs.setdefault("show", show)
+    kwargs.setdefault("save", save)
+    # Forwarded on every path rather than dropped where there is nothing to label: scvelo
+    # accepts it against a continuous colour and simply builds no legend, so a caller who sets
+    # it once does not find it silently ignored when the object happens to record one fate.
+    kwargs.setdefault("legend_loc", legend_loc)
+
+    if not selected:
+        # Probabilities recorded, no fate named: nothing is decided, and that is the figure.
+        return scv.pl.scatter(adata, basis=scv_basis, color=_UNDECIDED_COLOR, title=title or "", **kwargs)
+
+    if len(selected) == 1:
+        # A blend needs two fates. One is shaded by its own probability, on a fixed scale, so
+        # that an all-ones column renders flat of its own accord rather than by a branch.
+        name = selected[0]
+        column = f"_atlas_p_{name}"
+        adata.obs[column] = probabilities[name].to_numpy(dtype=float)
+        kwargs.setdefault(
+            "color_map", LinearSegmentedColormap.from_list(f"_atlas_{name}", [_UNDECIDED_COLOR, palette[0]])
+        )
+        kwargs.setdefault("vmin", 0.0)
+        kwargs.setdefault("vmax", 1.0)
+        return scv.pl.scatter(adata, basis=scv_basis, color=column, title=title or name, **kwargs)
+
+    return scv.pl.scatter(
+        adata,
+        basis=scv_basis,
+        color_gradients=probabilities[selected],
+        palette=palette,
+        title=title or "",
+        **kwargs,
+    )
