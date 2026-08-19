@@ -23,21 +23,13 @@ FATES = ["Ery", "Mk", "Mono"]
 NODES = 30
 
 
-def _probabilities(fates: list[str], seed: int = SEED) -> pd.DataFrame:
-    """Probabilities that commit further along pseudotime, so the tree actually branches."""
-    rng = np.random.default_rng(seed)
-    time = np.linspace(0, 1, N_CELLS)
-    concentration = np.full((N_CELLS, len(fates)), 0.3)
-    concentration[np.arange(N_CELLS), rng.integers(0, len(fates), N_CELLS)] += 6 * time
-    values = np.array([rng.dirichlet(row) for row in concentration])
-    return pd.DataFrame(values, columns=fates, index=CELLS)
-
-
-def _mudata(
-    fates: list[str] | None = None,
-    initial: dict[str, list[str]] | None = None,
-    superseded: bool = False,
-    colours: bool = True,
+def fate_tree_mudata(
+    fates: list[str] | None,
+    initial: dict[str, list[str]] | None,
+    superseded: bool,
+    colours: bool,
+    fate_tree_probabilities,
+    fate_tree_mudata,
 ) -> MuData:
     """A object carrying exactly what `fate_tree` reads: probabilities, a time, an embedding."""
     fates = FATES if fates is None else fates
@@ -49,7 +41,7 @@ def _mudata(
 
     mudata.obs["pseudotime"] = np.linspace(0, 1, N_CELLS)
     mudata.obs["celltype"] = pd.Categorical(rng.choice(["prog", "inter", "mature"], N_CELLS))
-    mudata.obsm["fate_probabilities"] = _probabilities(fates)
+    mudata.obsm["fate_probabilities"] = fate_tree_probabilities(fates)
     mudata.obsm["X_umap"] = rng.normal(size=(N_CELLS, 2))
 
     initial = {"HSC": CELLS[:5]} if initial is None else initial
@@ -75,8 +67,8 @@ def _mudata(
 
 
 @pytest.fixture
-def mudata() -> MuData:
-    return _mudata()
+def mudata(fate_tree_mudata) -> MuData:
+    return fate_tree_mudata()
 
 
 @pytest.fixture
@@ -273,8 +265,8 @@ def test_a_single_initial_state_needs_no_naming(mudata: MuData) -> None:
     assert "root" in fitted.uns["graph"]
 
 
-def test_several_initial_states_and_none_named_raises() -> None:
-    mudata = _mudata(initial={"HSC": CELLS[:5], "MPP": CELLS[5:10]})
+def test_several_initial_states_and_none_named_raises(fate_tree_mudata) -> None:
+    mudata = fate_tree_mudata(initial={"HSC": CELLS[:5], "MPP": CELLS[5:10]})
 
     with pytest.raises(ValueError, match="more than one initial state") as raised:
         _draw(mudata, nodes=NODES)
@@ -283,8 +275,8 @@ def test_several_initial_states_and_none_named_raises() -> None:
     assert "MPP" in str(raised.value)
 
 
-def test_a_named_initial_state_is_honoured() -> None:
-    mudata = _mudata(initial={"HSC": CELLS[:5], "MPP": CELLS[5:10]})
+def test_a_named_initial_state_is_honoured(fate_tree_mudata) -> None:
+    mudata = fate_tree_mudata(initial={"HSC": CELLS[:5], "MPP": CELLS[5:10]})
 
     fitted = _draw(mudata, nodes=NODES, root="MPP", return_tree=True)
 
@@ -296,15 +288,15 @@ def test_a_root_that_is_not_a_recorded_state_raises(mudata: MuData) -> None:
         _draw(mudata, nodes=NODES, root="nope")
 
 
-def test_initial_cells_the_object_no_longer_holds_raise() -> None:
-    mudata = _mudata(initial={"HSC": ["cell0", "gone1", "gone2"]}, superseded=True)
+def test_initial_cells_the_object_no_longer_holds_raise(fate_tree_mudata) -> None:
+    mudata = fate_tree_mudata(initial={"HSC": ["cell0", "gone1", "gone2"]}, superseded=True)
 
     with pytest.raises(KeyError, match="no longer holds"):
         _draw(mudata, nodes=NODES)
 
 
-def test_superseded_initial_states_are_still_read() -> None:
-    mudata = _mudata(superseded=True)
+def test_superseded_initial_states_are_still_read(fate_tree_mudata) -> None:
+    mudata = fate_tree_mudata(superseded=True)
 
     with pytest.warns(FutureWarning, match="migrate_states"):
         atlas.pl.fate_tree(mudata, nodes=NODES, return_tree=True, show=False)
@@ -325,18 +317,18 @@ def test_no_kl_divergence_is_required(mudata: MuData) -> None:
     assert len(axes) == 2
 
 
-def test_two_fates_draw() -> None:
+def test_two_fates_draw(fate_tree_mudata) -> None:
     """Below three fates scFates fits on `[P(fate0), pseudotime]` rather than the circular
     projection, so this is a distinct path and not the same one with a smaller input."""
-    mudata = _mudata(fates=["Ery", "Mk"])
+    mudata = fate_tree_mudata(fates=["Ery", "Mk"])
 
     axes = _draw(mudata, nodes=NODES)
 
     assert len(axes) == 2
 
 
-def test_fewer_than_two_fates_raises(mudata: MuData) -> None:
-    mudata.obsm["fate_probabilities"] = _probabilities(FATES)[["Ery"]]
+def test_fewer_than_two_fates_raises(mudata: MuData, fate_tree_probabilities) -> None:
+    mudata.obsm["fate_probabilities"] = fate_tree_probabilities(FATES)[["Ery"]]
 
     with pytest.raises(ValueError, match="at least two fates"):
         _draw(mudata, nodes=NODES)
@@ -364,8 +356,42 @@ def test_an_unknown_colour_raises(mudata: MuData) -> None:
         _draw(mudata, nodes=NODES, color="nope")
 
 
-def test_the_superseded_entry_point_is_deprecated(mudata: MuData) -> None:
-    with pytest.warns(FutureWarning, match="plot_tree"):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            atlas.pl.plot_tree(mudata, embedding_key="nope")
+# --------------------------------------------------------------------------------------
+# saving, showing, and the state the root is taken from
+# --------------------------------------------------------------------------------------
+
+
+def test_saving_writes_a_figure_under_the_working_directory(mudata, tree, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    atlas.pl.fate_tree(mudata, tree=tree, save="drawn", show=False)
+
+    assert (tmp_path / "figures" / "fate_tree_drawn.png").is_file()
+
+
+def test_the_figure_is_shown_by_default_when_only_axes_come_back(mudata, tree, monkeypatch):
+    """`show` defaults to the opposite of `return_tree`."""
+    shown = []
+    monkeypatch.setattr(plt, "show", lambda *a, **k: shown.append(True))
+
+    atlas.pl.fate_tree(mudata, tree=tree)
+
+    assert shown == [True]
+
+
+def test_asking_for_the_tree_does_not_show_the_figure(mudata, tree, monkeypatch):
+    shown = []
+    monkeypatch.setattr(plt, "show", lambda *a, **k: shown.append(True))
+
+    atlas.pl.fate_tree(mudata, tree=tree, return_tree=True)
+
+    assert shown == []
+
+
+def test_an_object_recording_no_initial_state_names_what_computes_one(fate_tree_mudata):
+    """The root is read while fitting, so this is reached only when no tree is supplied."""
+    mudata = fate_tree_mudata()
+    del mudata.obs["initial_states"]
+
+    with pytest.raises(KeyError, match="records no initial state"):
+        atlas.pl.fate_tree(mudata, nodes=NODES, show=False)

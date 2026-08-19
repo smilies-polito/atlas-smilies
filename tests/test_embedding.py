@@ -3,9 +3,7 @@ import warnings
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pytest
-from anndata import AnnData
 from matplotlib.axes import Axes
 from muon import MuData
 
@@ -19,42 +17,9 @@ SEED, CELLS = 42, 60
 SHARED_FEATURE = "GATA1"
 
 
-def _mudata() -> MuData:
-    """Two modalities, two embeddings, and one `.obs` column of every kind that is drawn.
-
-    The second embedding is deliberately one the wider ecosystem does not privilege by
-    name: resolving it is the case the superseded entry point cannot do at all.
-    """
-    rng = np.random.default_rng(SEED)
-    obs_names = [f"cell{i}" for i in range(CELLS)]
-
-    rna = AnnData(rng.random((CELLS, 4)).astype(np.float32))
-    rna.obs_names = obs_names
-    rna.var_names = [SHARED_FEATURE, "rna_only", "g2", "g3"]
-
-    activity = AnnData(rng.random((CELLS, 4)).astype(np.float32))
-    activity.obs_names = obs_names
-    activity.var_names = [SHARED_FEATURE, "activity_only", "a2", "a3"]
-
-    mudata = MuData({"rna": rna, "activity": activity})
-
-    time = np.linspace(0.0, 1.0, CELLS)
-    mudata.obsm["X_umap"] = np.column_stack([time * np.cos(time * 6), time * np.sin(time * 6)])
-    mudata.obsm["X_diffmap"] = rng.random((CELLS, 4))
-
-    mudata.obs["pseudotime"] = time
-    mudata.obs["n_counts"] = rng.integers(0, 5000, CELLS)
-    mudata.obs["celltype"] = pd.Categorical(np.array(["HSC", "TAC", "Ery"])[rng.integers(0, 3, CELLS)])
-    mudata.obs["labels"] = np.array(["left", "right"])[rng.integers(0, 2, CELLS)]
-    mudata.obs["is_root"] = time < 0.3
-    mudata.obs["with_missing"] = np.where(time < 0.5, np.nan, time)
-
-    return mudata
-
-
 @pytest.fixture
-def mudata() -> MuData:
-    return _mudata()
+def mudata(embedding_mudata) -> MuData:
+    return embedding_mudata()
 
 
 @pytest.fixture(autouse=True)
@@ -277,25 +242,28 @@ def test_the_same_key_keeps_its_colours(mudata):
 # --------------------------------------------------------------------------------------
 
 
-def test_the_superseded_entry_point_announces_its_supersession(mudata):
-    with pytest.warns(FutureWarning) as record:
-        atlas.pl.plot_embedding(mudata, show=False)
-
-    message = str(record[0].message)
-    assert "atlas.pl.embedding" in message
-    assert "2.0.0" in message
+# --------------------------------------------------------------------------------------
+# naming the embedding
+# --------------------------------------------------------------------------------------
 
 
-def test_the_superseded_entry_point_still_returns_nothing(mudata):
-    with pytest.warns(FutureWarning):
-        assert atlas.pl.plot_embedding(mudata, show=False) is None
+def test_an_embedding_belonging_to_one_modality_can_be_named(mudata):
+    """``"<modality>:<basis>"`` resolves against that modality rather than the object."""
+    mudata.mod["rna"].obsm["X_pca"] = np.random.default_rng(SEED).random((CELLS, 2))
+
+    ax = atlas.pl.embedding(mudata, basis="rna:X_pca", color="pseudotime", show=False)
+
+    assert isinstance(ax, Axes)
+    assert ax.collections[0].get_offsets().shape == (CELLS, 2)
 
 
-def test_the_superseded_entry_point_still_leaves_the_object_alone(mudata):
-    """It draws on a throwaway object; recording colours is confined to the replacement."""
-    before = set(mudata.obsm), set(mudata.uns)
+def test_an_object_carrying_no_embedding_at_all_names_the_step_that_produces_one():
+    """Distinct from naming an absent one: there is nothing to suggest instead."""
+    from anndata import AnnData
 
-    with pytest.warns(FutureWarning):
-        atlas.pl.plot_embedding(mudata, observation="celltype", show=False)
+    rna = AnnData(np.zeros((4, 2), dtype=np.float32))
+    rna.obs_names = [f"c{i}" for i in range(4)]
+    bare = MuData({"rna": rna})
 
-    assert (set(mudata.obsm), set(mudata.uns)) == before
+    with pytest.raises(KeyError, match="carries no embedding"):
+        atlas.pl.embedding(bare, color="anything", show=False)

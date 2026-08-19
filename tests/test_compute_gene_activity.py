@@ -161,3 +161,31 @@ def test_requires_features():
     with pytest.raises(ValueError, match="Feature dataframe"):
         compute_gene_activity(mdata, features=None, fragment_path=FRAGMENTS)
     assert "activity" not in mdata.mod
+
+
+@patch("atlas.pp._preprocessing.mu.atac.tl.locate_file")
+@patch("atlas.pp._preprocessing.mu.atac.tl.count_fragments_features")
+def test_a_fragment_file_already_recorded_is_not_located_again(mock_counts, mock_locate):
+    """A fragment file already in ``.uns['files']`` is used as it stands.
+
+    Every other test here arrives without one, so the guard was only ever seen failing
+    and this path had never run.
+    """
+    mock_counts.return_value = _generate_activity()
+    mudata = _create_mudata()
+    mudata["atac"].uns["files"] = {"fragments": FRAGMENTS}
+
+    result = compute_gene_activity(mudata, features=FEATURES)
+
+    assert mock_locate.call_count == 0
+    assert "activity" in result.mod
+
+
+@patch("atlas.pp._preprocessing.mu.atac.tl.count_fragments_features")
+def test_a_recorded_fragment_file_makes_the_path_argument_unnecessary(mock_counts):
+    """``fragment_path`` is only required when the object does not already carry one."""
+    mock_counts.return_value = _generate_activity()
+    mudata = _create_mudata()
+    mudata["atac"].uns["files"] = {"fragments": FRAGMENTS}
+
+    assert compute_gene_activity(mudata, features=FEATURES, fragment_path=None) is not None

@@ -319,3 +319,16 @@ def test_plotting_finds_the_embedding_without_being_told_where_it_is():
     umap(mdata)
     mdata.obs["pseudotime"] = np.linspace(0, 1, CELLS)
     atlas.pl.embedding(mdata, color="pseudotime", show=False)
+
+
+def test_a_graph_recording_a_route_this_package_does_not_build_is_refused():
+    """A record can name a route neither producer writes; it is refused, not guessed at.
+
+    The other tests all carry one of the two routes this package writes, so this branch
+    had never been taken.
+    """
+    mudata = _wnn_mudata()
+    mudata.uns["wnn"]["atlas"]["route"] = "invented"
+
+    with pytest.raises(ValueError, match="records an unknown route 'invented'"):
+        umap(mudata)

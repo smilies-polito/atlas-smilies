@@ -148,3 +148,27 @@ def test_states_are_recorded_as_columns_with_colours():
     for kind in ("initial_states", "terminal_states", "macrostates"):
         for position, name in enumerate(mdata.obs[kind].cat.categories):
             assert mdata.uns[f"{kind}_colors"][position] == palette[name]
+
+
+# --------------------------------------------------------------------------------------
+# the superseded layout keeps working
+#
+# `run` writes states under both the current and the superseded layout. Moved here from
+# `test_state_representation.py`: these assert what `run` records, not what a state
+# helper does.
+# --------------------------------------------------------------------------------------
+
+
+def test_both_layouts_are_written(palantir_run):
+    mudata = palantir_run("cluster")
+    assert "initial_states" in mudata.uns and "initial_states" in mudata.obs
+    assert "terminal_states" in mudata.uns and "terminal_states" in mudata.obs
+    assert isinstance(mudata.uns["fate_state_colors"], dict)
+
+
+def test_the_superseded_dictionaries_still_map_names_to_cells(palantir_run):
+    mudata = palantir_run("cluster")
+    for key in ("initial_states", "terminal_states"):
+        for name, cells in mudata.uns[key].items():
+            assert isinstance(name, str)
+            assert all(cell in set(mudata.obs_names) for cell in cells)

@@ -120,3 +120,20 @@ def test_keeps_obsm_obsp():
     assert "test" in new_data.obsp
     assert isinstance(new_data.obsp["test"], np.ndarray)
     assert new_data.obsp["test"].shape == (new_data.n_obs, new_data.n_obs)
+
+
+def test_a_column_that_cannot_be_aligned_is_dropped_rather_than_raising():
+    """Copying `.obs` across is best-effort: a column that will not align is left behind.
+
+    Reached here through a duplicated label on the parent index, which makes the lookup
+    return more rows than the new object has. Every other case here aligns cleanly, so the
+    guard had never been taken and the copy had only ever been seen succeeding.
+    """
+    mudata = _create_mudata(with_activity=True, with_atac=False)
+    mudata.obs["flag"] = np.arange(len(CELLS))
+    mudata.obs.index = pd.Index([CELLS[0]] + CELLS[:-1])
+
+    result = _safe_mudata(mudata, ["rna"])
+
+    assert "flag" not in result.obs.columns
+    assert list(result.mod) == ["rna"]

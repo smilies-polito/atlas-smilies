@@ -1,35 +1,53 @@
+"""The superseded entry point for drawing fate probabilities.
+
+Covers :func:`atlas.pl.plot_fate_probabilities`, deprecated in 1.1.0 and removed in
+2.0.0. Its contract for 1.x is that it announces its supersession and still guards its
+inputs; :func:`atlas.pl.fate_probabilities` that supersedes it is covered in
+``test_fate_probabilities.py``.
+
+This module previously held no tests at all: its whole body sat under
+``if __name__ == "__main__"``, so pytest collected nothing from it and every guard below
+was unexercised.
+"""
+
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytest
 from anndata import AnnData
 from muon import MuData
 
-from atlas.pl import plot_fate_probabilities
+import atlas
+
+matplotlib.use("Agg")
 
 SEED = 42
-N_TRUNK = 40
-N_BRANCH = 30  # cells per branch
+N_TRUNK, N_BRANCH = 40, 30
 N_CELLS = N_TRUNK + N_BRANCH * 2
+FATES = ["left", "right"]
+COLOURS = {"left": "#1f77b4", "right": "#ff7f0e"}
 
 
 def _make_umap(rng):
+    """A trunk that splits into two branches, so the drawing has something to shade."""
     jitter = 0.03
     trunk_t = np.linspace(1.0, 0.0, N_TRUNK)
     trunk = np.column_stack([rng.normal(0.0, jitter, size=N_TRUNK), trunk_t])
 
-    lefts = np.linspace(0.0, 1.0, N_BRANCH)
+    steps = np.linspace(0.0, 1.0, N_BRANCH)
     left = np.column_stack(
-        [-lefts + rng.normal(0.0, jitter, size=N_BRANCH), -lefts + rng.normal(0.0, jitter, size=N_BRANCH)]
+        [-steps + rng.normal(0.0, jitter, size=N_BRANCH), -steps + rng.normal(0.0, jitter, size=N_BRANCH)]
     )
-
-    rights = np.linspace(0.0, 1.0, N_BRANCH)
     right = np.column_stack(
-        [rights + rng.normal(0.0, jitter, size=N_BRANCH), -rights + rng.normal(0.0, jitter, size=N_BRANCH)]
+        [steps + rng.normal(0.0, jitter, size=N_BRANCH), -steps + rng.normal(0.0, jitter, size=N_BRANCH)]
     )
-
     return np.vstack([trunk, left, right]).astype(np.float32)
 
 
-if __name__ == "__main__":
+@pytest.fixture
+def mudata() -> MuData:
+    """Two fates that commit along the two branches, with a colour recorded for each."""
     rng = np.random.default_rng(SEED)
     obs_names = [f"cell_{i}" for i in range(N_CELLS)]
     obs = pd.DataFrame(index=obs_names)
@@ -38,154 +56,63 @@ if __name__ == "__main__":
     activity = AnnData(X=np.empty((N_CELLS, 0), dtype=np.float32), obs=obs.copy())
     mudata = MuData({"rna": rna, "activity": activity})
 
-    trunk_pt = np.linspace(0.0, 0.4, N_TRUNK)
-    left_pt = np.linspace(0.4, 1.0, N_BRANCH)
-    right_pt = np.linspace(0.4, 1.0, N_BRANCH)
-    pseudotime = np.concatenate([trunk_pt, left_pt, right_pt]).astype(np.float32)
-    mudata.obs["pseudotime"] = pseudotime
+    branch = np.linspace(0.4, 1.0, N_BRANCH)
+    mudata.obs["pseudotime"] = np.concatenate([np.linspace(0.0, 0.4, N_TRUNK), branch, branch]).astype(np.float32)
     mudata.obsm["X_umap"] = _make_umap(rng)
 
-    # single fate scenario
-    data = mudata.copy()
-    terminal_cell = data.obs_names[-1]
-    fate_probabilities = pd.DataFrame(np.ones((len(data), 1)), index=data.obs_names, columns=["terminal"])
-    data.obsm["fate_probabilities"] = fate_probabilities
-    data.uns["fate_state_colors"] = {"terminal": "#ff0000"}
-
-    plot_fate_probabilities(mudata=data, embedding_key="X_umap", fate_probability_key="fate_probabilities")
-
-    # two fates scenario
-    data = mudata.copy()
-    left_prob = np.zeros(N_CELLS, dtype=np.float32)
-    right_prob = np.zeros(N_CELLS, dtype=np.float32)
-
-    left_prob[:N_TRUNK] = 0.5
-    right_prob[:N_TRUNK] = 0.5
-
-    left_commitment = (left_pt - 0.4) / (1.0 - 0.4)
-    right_commitment = (right_pt - 0.4) / (1.0 - 0.4)
-
-    left_commitment = left_commitment**2
-    right_commitment = right_commitment**2
-
-    left_start = N_TRUNK
-    left_end = N_TRUNK + N_BRANCH
-
-    left_prob[left_start:left_end] = 0.5 + 0.5 * left_commitment
-    right_prob[left_start:left_end] = 1.0 - left_prob[left_start:left_end]
-    right_start = left_end
-
-    right_prob[right_start:] = 0.5 + 0.5 * right_commitment
-    left_prob[right_start:] = 1.0 - right_prob[right_start:]
-
-    fate_probabilities = pd.DataFrame(
-        {
-            "left": left_prob,
-            "right": right_prob,
-        },
-        index=data.obs_names,
+    commitment = ((branch - 0.4) / 0.6) ** 2
+    left = np.concatenate([np.full(N_TRUNK, 0.5), 0.5 + 0.5 * commitment, 0.5 - 0.5 * commitment])
+    mudata.obsm["fate_probabilities"] = pd.DataFrame(
+        {"left": left, "right": 1.0 - left}, index=obs_names, dtype=np.float32
     )
+    mudata.uns["fate_state_colors"] = dict(COLOURS)
+    return mudata
 
-    data.obsm["fate_probabilities"] = fate_probabilities
-    data.uns["fate_state_colors"] = {
-        "left": "#1f77b4",
-        "right": "#ff7f0e",
-    }
 
-    plot_fate_probabilities(mudata=data, embedding_key="X_umap", fate_probability_key="fate_probabilities")
+# --------------------------------------------------------------------------------------
+# the supersession
+# --------------------------------------------------------------------------------------
 
-    # committed totally to one cluster
-    data = mudata.copy()
-    left_prob = np.zeros(N_CELLS, dtype=np.float32)
-    right_prob = np.zeros(N_CELLS, dtype=np.float32)
-    fate_probabilities = pd.DataFrame({"left": left_prob, "right": right_prob}, index=obs_names)
 
-    cells = rng.choice(mudata.obs_names, size=30, replace=False)
-    right_cells = mudata.obs_names.difference(cells)
-    fate_probabilities.loc[cells, "left"] = 1
-    fate_probabilities.loc[right_cells, "right"] = 1
+def test_the_superseded_entry_point_announces_its_supersession(mudata):
+    with pytest.warns(FutureWarning) as record:
+        atlas.pl.plot_fate_probabilities(mudata)
 
-    data.obsm["fate_probabilities"] = fate_probabilities
-    data.uns["fate_state_colors"] = {
-        "left": "#1f77b4",
-        "right": "#ff7f0e",
-    }
-    plot_fate_probabilities(mudata=data, embedding_key="X_umap", fate_probability_key="fate_probabilities")
+    messages = [str(warning.message) for warning in record]
+    assert any("atlas.pl.fate_probabilities" in message and "2.0.0" in message for message in messages)
 
-    # one cluster fully committed the other not
-    data = mudata.copy()
-    left_prob = np.zeros(N_CELLS, dtype=np.float32)
-    right_prob = np.zeros(N_CELLS, dtype=np.float32)
-    left_prob[:N_TRUNK] = 0.0
-    right_prob[:N_TRUNK] = np.linspace(0.2, 0.6, N_TRUNK)
 
-    left_start = N_TRUNK
-    left_end = N_TRUNK + N_BRANCH
+def test_the_superseded_entry_point_still_draws(mudata):
+    with pytest.warns(FutureWarning):
+        assert atlas.pl.plot_fate_probabilities(mudata) is None
 
-    left_prob[left_start:left_end] = 1.0
-    right_prob[left_start:left_end] = 0.0
+    assert plt.get_fignums()
 
-    right_start = left_end
 
-    left_prob[right_start:] = 0.0
-    right_prob[right_start:] = np.linspace(0.6, 1.0, N_BRANCH)
+# --------------------------------------------------------------------------------------
+# the guards the docstring documents
+# --------------------------------------------------------------------------------------
 
-    fate_probabilities = pd.DataFrame(
-        {
-            "left": left_prob,
-            "right": right_prob,
-        },
-        index=data.obs_names,
-    )
 
-    data.obsm["fate_probabilities"] = fate_probabilities
-    data.uns["fate_state_colors"] = {
-        "left": "#1f77b4",
-        "right": "#ff7f0e",
-    }
+def test_probabilities_that_are_not_recorded_warn_and_draw_nothing(mudata):
+    del mudata.obsm["fate_probabilities"]
 
-    plot_fate_probabilities(mudata=data, embedding_key="X_umap", fate_probability_key="fate_probabilities")
+    with pytest.warns(UserWarning, match="fate probabilities are not available"):
+        assert atlas.pl.plot_fate_probabilities(mudata) is None
 
-    # three fate scenario: left, trunk, right
-    data = mudata.copy()
 
-    left_prob = np.zeros(data.n_obs, dtype=np.float32)
-    trunk_prob = np.zeros(data.n_obs, dtype=np.float32)
-    right_prob = np.zeros(data.n_obs, dtype=np.float32)
+def test_an_embedding_that_is_not_recorded_warns_and_draws_nothing(mudata):
+    with pytest.warns(UserWarning, match="embedding is not available"):
+        assert atlas.pl.plot_fate_probabilities(mudata, embedding_key="X_absent") is None
 
-    # trunk: far from the junction = committed to trunk
-    # in your UMAP, top trunk is far from the junction
-    trunk_prob[:N_TRUNK] = np.linspace(1.0, 0.34, N_TRUNK)
-    left_prob[:N_TRUNK] = (1.0 - trunk_prob[:N_TRUNK]) / 2.0
-    right_prob[:N_TRUNK] = (1.0 - trunk_prob[:N_TRUNK]) / 2.0
 
-    # left branch: fully committed to left
-    left_start = N_TRUNK
-    left_end = N_TRUNK + N_BRANCH
+def test_one_fate_may_be_given_as_a_name(mudata):
+    with pytest.warns(FutureWarning):
+        assert atlas.pl.plot_fate_probabilities(mudata, states="left") is None
 
-    left_prob[left_start:left_end] = 1.0
-    trunk_prob[left_start:left_end] = 0.0
-    right_prob[left_start:left_end] = 0.0
+    assert plt.get_fignums()
 
-    # right branch: commitment to right increases away from the junction
-    right_start = left_end
 
-    right_prob[right_start:] = np.linspace(0.34, 1.0, N_BRANCH)
-    left_prob[right_start:] = (1.0 - right_prob[right_start:]) / 2.0
-    trunk_prob[right_start:] = (1.0 - right_prob[right_start:]) / 2.0
-
-    fate_probabilities = pd.DataFrame(
-        {
-            "left": left_prob,
-            "trunk": trunk_prob,
-            "right": right_prob,
-        },
-        index=data.obs_names,
-    )
-
-    data.obsm["fate_probabilities"] = fate_probabilities
-    data.uns["fate_state_colors"] = {
-        "left": "#1f77b4",
-        "trunk": "#2ca02c",
-        "right": "#ff7f0e",
-    }
+def test_naming_only_fates_that_do_not_exist_selects_none_of_them(mudata):
+    with pytest.warns(UserWarning, match="No lineages have been selected"):
+        assert atlas.pl.plot_fate_probabilities(mudata, states=["absent"]) is None

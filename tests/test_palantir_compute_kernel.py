@@ -230,3 +230,17 @@ def test_key_combined_with_a_superseded_parameter_raises(old, value):
     mdata = _complete_record_mudata()
     with pytest.raises(ValueError, match=old):
         PalantirExtension(mdata).compute_kernel(key="wnn", **{old: value})
+
+
+def test_a_knn_below_the_recorded_neighbour_count_is_used_as_given():
+    """`knn` is only clipped when it exceeds what the graph records.
+
+    Every other case here passes `None` or a value above `K`, so the kernel had only ever
+    been built with ``knn == K`` and the adaptive bandwidth never saw a smaller one.
+    """
+    smaller, clipped = PalantirExtension(_create_mudata()), PalantirExtension(_create_mudata())
+    smaller.compute_kernel(knn=K // 2)
+    clipped.compute_kernel(knn=None)
+
+    difference = (smaller.mudata.obsp["DM_Kernel"] - clipped.mudata.obsp["DM_Kernel"]).data
+    assert not np.allclose(difference, 0)
