@@ -15,11 +15,12 @@ First public release
 ### Changed
 - The temporary `AnnData` objects built to interface with CellRank and Palantir are now constructed in `atlas.tl.utils` rather than inside the extension classes. Internal reorganisation with no change in behaviour.
 - `atlas.tl.PalantirExtension` and `atlas.tl.CellRankExtension` now live in `atlas/tl/palantir\_extension.py` and `atlas/tl/cellrank\_extension.py` respectively, replacing `atlas/tl/trajectory\_inference.py`. Both remain importable from `atlas.tl` as before.
+- Raised the minimum supported Palantir version from `>1.3` to `>=1.4.5`, to establish a single numerical baseline for seeded results. Results produced against Palantir below `1.4.5` are not reproducible under this floor. Furthermore,  `palantir.utils.early_cell` is guaranteed to forward `eigvec_key` to `palantir.utils.fallback_terminal_cell`.
 
 ## [0.0.5] - 2026-04-01
 ### Fixed
 - Fix aggregation of fate probabilities when `cluster_key` is categorical preventing the inclusion of unused categories
-
+- Fix _safe_mudata MuData construction to make is compatible with mudata > 0.3
 - Fix muon.MuData copy mechanism in atlas.pp.preprocessing: if copy = True performs deep copy and preserves all information in the new MuData instance
 
 ### Added

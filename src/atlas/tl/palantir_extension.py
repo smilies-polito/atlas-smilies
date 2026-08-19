@@ -9,12 +9,6 @@ from scipy.sparse import csr_matrix, find
 
 from .utils import _assign_state_colors, _palantir_anndata, compute_entropy
 
-#: Key under which :func:`palantir.utils.fallback_terminal_cell` looks up the multiscale
-#: space. Palantir below 1.4.5 does not forward the ``eigvec_key`` of
-#: :func:`palantir.utils.early_cell` to that fallback, so the representation is
-#: registered under this name as well. Harmless on 1.4.5 and above, where it is fixed.
-_PALANTIR_FALLBACK_EIGVEC_KEY = "DM_EigenVectors_multiscaled"
-
 
 class PalantirExtension:
     """Trajectory inference using the Palantir algorithm on ``MuData`` objects.
@@ -351,8 +345,9 @@ class PalantirExtension:
             self.compute_diffusion_maps(seed=random_state)
             self.compute_multiscale_space(out_key=eigvec_multi_key)
 
-        keys = list(dict.fromkeys([eigvec_multi_key, _PALANTIR_FALLBACK_EIGVEC_KEY]))
-        _tmp = _palantir_anndata(self._mudata, eigvec_keys=keys, multiscale=self._mudata.obsm[eigvec_multi_key])
+        _tmp = _palantir_anndata(
+            self._mudata, eigvec_key=eigvec_multi_key, multiscale=self._mudata.obsm[eigvec_multi_key]
+        )
 
         # Attempt the inexpensive scan first so the fallback is only announced when it
         # is actually reached, rather than whenever `fallback_seed` happens to be set.

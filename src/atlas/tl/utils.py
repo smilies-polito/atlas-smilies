@@ -1,5 +1,4 @@
 import warnings
-from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,19 +46,11 @@ def _cellrank_anndata(mudata: MuData, connectivity_key: str, cluster_key: str | 
     return adata
 
 
-def _palantir_anndata(mudata: MuData, eigvec_keys: Sequence[str], multiscale: pd.DataFrame | np.ndarray) -> AnnData:
+def _palantir_anndata(mudata: MuData, eigvec_key: str, multiscale: pd.DataFrame | np.ndarray) -> AnnData:
     """Build the temporary :class:`~anndata.AnnData` required by the Palantir interface.
 
     Palantir's cell-selection helpers read only ``obs``, ``obs_names`` and one
     multidimensional annotation, so this view carries nothing else.
-
-    The multiscale representation is attached under every key in ``eigvec_keys``, all
-    referencing the same data. This exists because Palantir versions below 1.4.5 do not
-    forward the ``eigvec_key`` argument of :func:`palantir.utils.early_cell` to
-    :func:`palantir.utils.fallback_terminal_cell`, which therefore looks the
-    representation up under Palantir's own default name and fails when the caller stored
-    it elsewhere. Registering both names lets the fallback operate on the same
-    representation ATLAS uses, on every supported Palantir version.
 
     The original ``MuData`` is left unchanged.
 
@@ -67,8 +58,8 @@ def _palantir_anndata(mudata: MuData, eigvec_keys: Sequence[str], multiscale: pd
     ----------
     mudata
         Multimodal annotated data object.
-    eigvec_keys
-        Keys under which to register ``multiscale`` in ``.obsm``.
+    eigvec_key
+        Key under which to register ``multiscale`` in ``.obsm``.
     multiscale
         Multiscale diffusion representation, of shape ``(n_cells, n_components)``.
 
@@ -77,8 +68,7 @@ def _palantir_anndata(mudata: MuData, eigvec_keys: Sequence[str], multiscale: pd
     A temporary :class:`~anndata.AnnData` view over ``mudata``.
     """
     adata = AnnData(obs=mudata.obs.copy())
-    for key in eigvec_keys:
-        adata.obsm[key] = multiscale
+    adata.obsm[eigvec_key] = multiscale
     return adata
 
 

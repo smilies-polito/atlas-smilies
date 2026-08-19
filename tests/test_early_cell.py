@@ -120,18 +120,6 @@ def test_no_warning_when_fallback_is_not_reached(recwarn):
     assert [w for w in recwarn if "costs as much as" in str(w.message)] == []
 
 
-def test_fallback_with_non_default_multiscale_key():
-    # Regression for Palantir < 1.4.5, where early_cell does not forward `eigvec_key` to
-    # its fallback, which then looks the multiscale space up under its own default name.
-    # Passes trivially on 1.4.5+, where it is fixed; guards the rest of the declared range.
-    pext = PalantirExtension(_create_mudata(multiscale_key="custom_key"))
-    with pytest.warns(UserWarning):
-        cell = pext.early_cell(
-            celltype="rare", cluster_key="cluster", eigvec_multi_key="custom_key", fallback_seed=SEED
-        )
-    assert cell == RARE_CELL
-
-
 def test_mudata_is_not_mutated():
     pext = PalantirExtension(_create_mudata())
     mdata = pext.mudata

@@ -32,7 +32,7 @@ dependencies = [
   "mudata>=0.3",
   "muon>=0.1",
   "numpy>=1.23",
-  "palantir>1.3",
+  "palantir>=1.4.5",
   "pandas>=1.5,<3",
   "pygam",
   "scanpy>=1.9",

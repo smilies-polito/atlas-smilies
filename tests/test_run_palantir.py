@@ -24,7 +24,7 @@ def _create_mudata() -> MuData:
     rna.var_names, act.var_names = GENES, ACTIVITY_VAR
 
     mudata = MuData({"rna": rna, "activity": act})
-    mudata.obs = CLUSTERS
+    mudata.obs = CLUSTERS.copy()
 
     # mock wnn distances
     rows = np.repeat(np.arange(len(CELLS)), K)
