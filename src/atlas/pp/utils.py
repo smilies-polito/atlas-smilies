@@ -28,6 +28,7 @@ def _safe_mudata(mudata: MuData, modalities: Sequence[str]) -> MuData:
         raise KeyError("No modalities available")
 
     new_data = MuData({k: mudata.mod[k] for k in avail_mod})
+    new_data.pull_obs()
     new_data.uns = copy.deepcopy(mudata.uns)
 
     for storing in ["obsm", "obsp", "varm", "varp"]:
