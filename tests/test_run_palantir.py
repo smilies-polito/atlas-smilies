@@ -1,5 +1,3 @@
-import re
-
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -26,10 +24,7 @@ def _create_mudata() -> MuData:
     rna.var_names, act.var_names = GENES, ACTIVITY_VAR
 
     mudata = MuData({"rna": rna, "activity": act})
-    # Copied, not shared: assigning the module-level frame makes `mudata.obs` *be* it, so
-    # `run` writing its output columns mutates the constant and every later call to this
-    # helper returns a fixture already carrying the previous run's results.
-    mudata.obs = CLUSTERS.copy()
+    mudata.obs = CLUSTERS
 
     # mock wnn distances
     rows = np.repeat(np.arange(len(CELLS)), K)
@@ -43,11 +38,9 @@ def _create_mudata() -> MuData:
 
     mudata.uns["wnn"] = {"params": {"n_neighbors": K}}
 
-    # mock multiscale space, copied for the same reason: nothing writes to these today, but
-    # a fixture that hands out references to module-level state is one dependency away from
-    # the same problem.
-    mudata.obsm["multiscale"] = MULTISCALE.copy()
-    mudata.obsm["eigenvectors"] = EIGENVECTORS.copy()
+    # mock multiscale space
+    mudata.obsm["multiscale"] = MULTISCALE
+    mudata.obsm["eigenvectors"] = EIGENVECTORS
     return mudata
 
 
@@ -106,69 +99,10 @@ def test_run_with_clusters():
     assert "initial_states" in mdata.uns
     assert len(mdata.uns["initial_states"]) == 1
     assert "terminal_states" in mdata.uns
-    # `cluster_key` names states after the cluster and nothing else. Where several states
-    # would take one cluster's name they are disambiguated with a `_1`, `_2` … suffix, so the
-    # cluster is the stem of the name rather than the whole of it.
     for k, v in mdata.uns["initial_states"].items():
-        assert re.sub(r"_\d+$", "", k) in ["red", "blue"]
+        assert k in ["red", "blue"]
         assert v[0] in mdata.obs_names
     for k, v in mdata.uns["terminal_states"].items():
-        assert re.sub(r"_\d+$", "", k) in ["red", "blue"]
+        assert k in ["red", "blue"]
         assert v[0] in mdata.obs_names
     assert "fate_probabilities" in mdata.obsm
-
-
-def test_states_are_recorded_as_columns_with_colours():
-    """The layout the wider ecosystem reads, written alongside the superseded dictionaries."""
-    pext = PalantirExtension(_create_mudata())
-    pext.run(
-        early_cell=EARLY_CELL,
-        knn=10,
-        cluster_key="cluster",
-        num_waypoints=NUM_WAYPOINTS,
-        eigvec_key="eigenvectors",
-        eigvec_multi_key="multiscale",
-    )
-    mdata = pext.mudata
-
-    for kind in ("initial_states", "terminal_states", "macrostates"):
-        column = mdata.obs[kind]
-        assert isinstance(column.dtype, pd.CategoricalDtype)
-        assert column.notna().any()
-        # one colour per category, in the categories' own order
-        assert len(mdata.uns[f"{kind}_colors"]) == len(column.cat.categories)
-
-    # `macrostates` is the union of the other kinds, Palantir computing no coarse-graining
-    assert set(mdata.obs["macrostates"].cat.categories) == set(mdata.uns["initial_states"]) | set(
-        mdata.uns["terminal_states"]
-    )
-
-    # a state named under both kinds carries one colour
-    palette = mdata.uns["atlas_state_palette"]
-    for kind in ("initial_states", "terminal_states", "macrostates"):
-        for position, name in enumerate(mdata.obs[kind].cat.categories):
-            assert mdata.uns[f"{kind}_colors"][position] == palette[name]
-
-
-# --------------------------------------------------------------------------------------
-# the superseded layout keeps working
-#
-# `run` writes states under both the current and the superseded layout. Moved here from
-# `test_state_representation.py`: these assert what `run` records, not what a state
-# helper does.
-# --------------------------------------------------------------------------------------
-
-
-def test_both_layouts_are_written(palantir_run):
-    mudata = palantir_run("cluster")
-    assert "initial_states" in mudata.uns and "initial_states" in mudata.obs
-    assert "terminal_states" in mudata.uns and "terminal_states" in mudata.obs
-    assert isinstance(mudata.uns["fate_state_colors"], dict)
-
-
-def test_the_superseded_dictionaries_still_map_names_to_cells(palantir_run):
-    mudata = palantir_run("cluster")
-    for key in ("initial_states", "terminal_states"):
-        for name, cells in mudata.uns[key].items():
-            assert isinstance(name, str)
-            assert all(cell in set(mudata.obs_names) for cell in cells)

@@ -5,7 +5,10 @@ from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scFates as scf
+import scvelo as scv
 from anndata import AnnData
+from cellrank._utils._lineage import Lineage
 from muon import MuData
 
 from .utils import MultiBranchGAM
@@ -24,12 +27,6 @@ def plot_embedding(
 
     This function creates a scatter plot of cells in a specified embedding space
     (e.g. UMAP, PCA) using values from `mudata.obs` for coloring.
-
-    .. deprecated:: 1.1.0
-       This function is deprecated and will be removed in version 2.0.0.
-       It is retained in version 1.1.0 for backwards compatibility.
-
-       It is superseded by :func:`~atlas.pl.embedding`.
 
     Parameters
     ----------
@@ -61,15 +58,6 @@ def plot_embedding(
     UserWarning
         If `embedding_key` is not found in `mudata.obsm`.
     """
-    warnings.warn(
-        "`plot_embedding` is deprecated since version 1.1.0 and will be "
-        "removed in version 2.0.0. Use `atlas.pl.embedding` instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
-    import scvelo as scv
-
     if observation not in mudata.obs.columns:
         warnings.warn(f"WARNING: {observation} not a valid cell metadata", stacklevel=2)
         return
@@ -111,12 +99,6 @@ def plot_fate_probabilities(
     them onto a specified embedding (such as UMAP). Cells are colored using
     lineage-specific gradients, allowing inspection of differentiation trajectories.
 
-    .. deprecated:: 1.1.0
-       This function is deprecated and will be removed in version 2.0.0.
-       It is retained in version 1.1.0 for backwards compatibility.
-
-       It is superseded by :func:`~atlas.pl.fate_probabilities`
-
     Parameters
     ----------
     mudata
@@ -149,16 +131,6 @@ def plot_fate_probabilities(
         If no valid terminal states are selected.
 
     """
-    warnings.warn(
-        "`plot_fate_probabilities` is deprecated since version 1.1.0 and will be "
-        "removed in version 2.0.0. Use `atlas.pl.fate_probabilities` instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
-    import scvelo as scv
-    from cellrank._utils._lineage import Lineage
-
     if fate_probability_key not in mudata.obsm.keys():
         warnings.warn("WARNING: fate probabilities are not available; Try recompute them.", stacklevel=2)
         return
@@ -244,12 +216,6 @@ def plot_trends(
     For each branch, the function displays the fitted GAM curve together with its
     confidence interval.
 
-    .. deprecated:: 1.1.0
-       This function is deprecated and will be removed in version 2.0.0.
-       It is retained in version 1.1.0 for backwards compatibility.
-
-       It is superseded by :func:`~atlas.pl.trends`.
-
     Parameters
     ----------
     mudata
@@ -282,13 +248,6 @@ def plot_trends(
         The function generates a matplotlib figure and optionally saves it.
 
     """
-    warnings.warn(
-        "`plot_trends` is deprecated since version 1.1.0 and will be "
-        "removed in version 2.0.0. Use `atlas.pl.trends` instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
     if ptf not in mudata["rna"].var_names:
         raise KeyError(f"TF {ptf} not available")
     if gene not in mudata["activity"].var_names:
@@ -379,12 +338,6 @@ def plot_tree(
     """
     Compute and visualize a principal tree from fate probabilities, using :cite:`scfates`.
 
-    .. deprecated:: 1.1.0
-       This function is deprecated and will be removed in version 2.0.0.
-       It is retained in version 1.1.0 for backwards compatibility.
-
-       It is superseded by :func:`~atlas.pl.fate_tree`.
-
     Parameters
     ----------
     mudata
@@ -434,16 +387,6 @@ def plot_tree(
     -----
     Requires precomputed fate probabilities with at least 2 terminal states.
     """
-    warnings.warn(
-        "`plot_tree` is deprecated since version 1.1.0 and will be "
-        "removed in version 2.0.0. Use `atlas.pl.fate_tree` instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
-    import scFates as scf
-    from cellrank._utils._lineage import Lineage
-
     if root_params is None:
         root_params = {}
     fate_prob_key, lineage_key = "term_states_fwd_memberships", "lineages_fwd"
@@ -464,15 +407,11 @@ def plot_tree(
         warnings.warn(f"Specified color ({color}) not in mudata.obs", stacklevel=2)
         return
 
-    fate_probabilities = mudata.obsm[fate_probability_key]
-    if fate_probabilities is None:
-        warnings.warn("WARING: fate probabilties are not available", stacklevel=2)
-        return
-    fate_probabilities = fate_probabilities.loc[mudata.obs_names]
+    fate_probabilities = mudata.obsm[fate_probability_key].loc[mudata.obs_names]
 
     # scFates.cellrank_to_tree does not check n_fates = 1 and cellrank.pl.circular_projection does not work.
-    if fate_probabilities.shape[1] == 0:
-        warnings.warn("Fate probabilities are not available; Try recompute them", stacklevel=2)
+    if fate_probabilities is None and fate_probabilities.shape[1] == 0:
+        raise warnings.warn("Fate probabilities are not available; Try recompute them", stacklevel=2)
         return
 
     if fate_probabilities.shape[1] < 2:

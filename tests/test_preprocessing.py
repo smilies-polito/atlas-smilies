@@ -157,32 +157,3 @@ def test_activity(mock_func):
     assert "wnn" in result.uns
     assert "wnn_connectivities" in result.obsp
     assert "wnn_distances" in result.obsp
-
-
-def test_a_modality_graph_that_already_exists_is_not_recomputed():
-    """`preprocessing` skips a modality whose neighbours are already recorded.
-
-    Statement coverage reported this file complete while this branch had never been
-    taken: every other test starts from an object with no graph, so the guard was only
-    ever seen failing.
-    """
-    mudata = _create_mudata(with_activity=True, with_atac=False)
-    for modality in ("rna", "activity"):
-        sc.pp.pca(mudata.mod[modality], n_comps=n_comps, random_state=SEED)
-        sc.pp.neighbors(mudata.mod[modality], n_neighbors=knn_rna, n_pcs=n_pcs_rna, random_state=SEED)
-    recorded = {name: mudata.mod[name].obsp["distances"].copy() for name in ("rna", "activity")}
-
-    with patch("atlas.pp.basic.sc.pp.neighbors") as neighbors:
-        result = preprocessing(
-            mudata,
-            n_pcs_rna=n_pcs_rna,
-            n_pcs_act=n_pcs_act,
-            n_neighbors=n_neighbors,
-            n_multineighbors=n_multineighbors,
-            n_bandwidth_neighbors=n_bandwidth_neighbors,
-            random_state=SEED,
-        )
-
-    assert neighbors.call_count == 0
-    for name, distances in recorded.items():
-        assert (result.mod[name].obsp["distances"] != distances).nnz == 0

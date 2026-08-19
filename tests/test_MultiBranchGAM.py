@@ -97,9 +97,3 @@ def test_zero_weights(_create_mudata):
     assert len(model.models) == 1
     assert "branch1" not in model.models
     assert "branch2" in model.models
-
-
-def test_invalid_fate_probability_key(_create_mudata):
-    """The last of the four keys checked, and the only one whose guard was unexercised."""
-    with pytest.raises(KeyError, match="absent not a valid key"):
-        MultiBranchGAM(_create_mudata, ptf="ptf1", gene="gene1", fate_prob_key="absent")

@@ -1,5 +1,3 @@
-import warnings
-
 import muon as mu
 import pandas as pd
 import scanpy as sc
@@ -41,21 +39,11 @@ def preprocessing(
     - Construction of a weighted nearest neighbor (WNN) graph
     - Computation of a multimodal UMAP embedding
 
-    .. deprecated:: 1.1.0
-       This function is deprecated and will be removed in version 2.0.0.
-       It is retained in version 1.1.0 for backwards compatibility.
-
-       The functionality has been split into the following functions:
-
-       - :func:`~atlas.pp.compute_gene_activity`,
-       - :func:`~atlas.pp.wnn`,
-       - :func:`~atlas.pp.knn`,
-       - :func:`~atlas.tl.umap`.
-
     Parameters
     ----------
     mudata
-            MuData object containing at least the ``rna`` modality and either the ``atac`` or ``activity``
+            MuData object containing at least the ``"rna"`` modality and either
+            an ``"activity"`` or ``"atac"`` modality.
     n_pcs_rna
             Number of principal components used for the RNA kNN graph.
     n_pcs_act
@@ -73,15 +61,13 @@ def preprocessing(
             is used.
     n_bandwidth_neighbors
             Number of neighbors used for bandwidth estimation in the WNN graph,
-
-            See in :func:`muon.pp.neighbors`.
-
+            as in :func:`muon.pp.neighbors`.
     n_multineighbors
             Number of neighbors used for multimodal neighbor construction,
             as in :func:`muon.pp.neighbors`.
     metric
             Distance metric used for neighbor graph construction,
-            as in :func:`muon.pp.neighbors`.
+            as in :func:``muon.pp.neighbors``.
     stranded
             Whether to consider strand information when computing gene activity.
     fragment_path
@@ -108,8 +94,6 @@ def preprocessing(
             - weighted nearest neighbor graph stored under ``.uns["wnn"]``
             - multimodal UMAP embedding stored in ``.obsm["X_umap"]``
 
-    Note that if modalities "rna" and "atac" are provided  then a new MuData object is created with "rna" and "activity" as modalities.
-
     Raises
     ------
     KeyError
@@ -124,14 +108,6 @@ def preprocessing(
     >>> preprocess(mdata, n_pcs_rna=30, knn_rna=20)
 
     """
-    warnings.warn(
-        "`preprocessing` is deprecated since version 1.1.0 and will be "
-        "removed in version 2.0.0. Use `atlas.pp.compute_gene_activity`, "
-        "`atlas.pp.wnn`, `atlas.pp.knn` and `atlas.tl.umap` instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-
     data = mudata.copy() if copy else mudata
 
     if "rna" not in data.mod:
