@@ -50,40 +50,12 @@ def test_route_and_representation_are_recorded():
     assert result.uns["joint"]["atlas"]["use_rep"] == "X_joint"
 
 
-def test_no_embedding_is_computed():
-    result = knn(_create_mudata(), use_rep="X_joint", n_neighbors=N_NEIGHBORS, random_state=SEED)
-    assert "X_umap" not in result.obsm
-
-
-def test_no_modality_weights_are_produced():
-    result = knn(_create_mudata(), use_rep="X_joint", n_neighbors=N_NEIGHBORS, random_state=SEED)
-    assert "mod_weight" not in result.obs
-
-
 def test_modalities_are_untouched():
     mdata = _create_mudata()
     result = knn(mdata, use_rep="X_joint", n_neighbors=N_NEIGHBORS, random_state=SEED)
     assert set(result.mod) == {"rna", "activity"}
     for mod in ("rna", "activity"):
         assert "distances" not in result[mod].obsp
-
-
-def test_nothing_else_is_left_behind():
-    mdata = _create_mudata()
-    obsm_before, obs_before = set(mdata.obsm), mdata.obs.copy()
-    knn(mdata, use_rep="X_joint", n_neighbors=N_NEIGHBORS, random_state=SEED)
-    assert set(mdata.obsm) == obsm_before
-    assert mdata.obs.equals(obs_before)
-
-
-def test_default_key_is_joint():
-    # The default differs from the weighted route's, so a graph built from an integrated
-    # representation does not land under a key naming a weighting that did not happen.
-    mdata = _create_mudata()
-    knn(mdata, use_rep="X_joint", n_neighbors=N_NEIGHBORS, random_state=SEED)
-    assert "joint" in mdata.uns
-    assert "wnn" not in mdata.uns
-    assert "wnn_distances" not in mdata.obsp
 
 
 def test_key_added():

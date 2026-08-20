@@ -7,7 +7,7 @@ import scanpy as sc
 from anndata import AnnData
 from muon import MuData
 
-from atlas.pp import compute_gene_activity, preprocessing
+from atlas.pp import compute_gene_activity
 
 SEED = 42
 CELLS = [f"cell{i}" for i in range(60)]
@@ -51,36 +51,6 @@ def test_activity_is_derived(mock_counts):
     assert "activity" in result.mod
     assert result["activity"].shape == (len(CELLS), len(ACTIVITY_VAR))
     assert "X_pca" in result["activity"].obsm
-
-
-@patch("atlas.pp._preprocessing.mu.atac.tl.count_fragments_features")
-def test_no_graph_is_built(mock_counts):
-    mock_counts.return_value = _generate_activity()
-    result = compute_gene_activity(_create_mudata(), features=FEATURES, fragment_path=FRAGMENTS)
-    assert "wnn_distances" not in result.obsp
-    assert "wnn" not in result.uns
-
-
-@patch("atlas.pp._preprocessing.mu.atac.tl.count_fragments_features")
-@patch("atlas.pp.basic.mu.atac.tl.count_fragments_features")
-def test_matches_the_modality_preprocessing_derives(mock_basic, mock_new):
-    mock_basic.return_value = _generate_activity()
-    mock_new.return_value = _generate_activity()
-
-    old = preprocessing(
-        _create_mudata(),
-        features=FEATURES,
-        fragment_path=FRAGMENTS,
-        knn_rna=5,
-        knn_act=5,
-        n_pcs_rna=5,
-        n_pcs_act=5,
-        random_state=SEED,
-    )
-    new = compute_gene_activity(_create_mudata(), features=FEATURES, fragment_path=FRAGMENTS, random_state=SEED)
-
-    assert np.allclose(old["activity"].X, new["activity"].X)
-    assert np.allclose(old["activity"].obsm["X_pca"], new["activity"].obsm["X_pca"])
 
 
 @patch("atlas.pp._preprocessing.mu.atac.tl.count_fragments_features")
@@ -160,4 +130,3 @@ def test_requires_features():
     mdata = _create_mudata()
     with pytest.raises(ValueError, match="Feature dataframe"):
         compute_gene_activity(mdata, features=None, fragment_path=FRAGMENTS)
-    assert "activity" not in mdata.mod

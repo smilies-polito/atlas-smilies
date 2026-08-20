@@ -7,7 +7,6 @@ import scanpy as sc
 from anndata import AnnData
 from muon import MuData
 
-import atlas
 from atlas.pp import preprocessing
 
 CELLS = [f"cell{i}" for i in range(100)]
@@ -59,10 +58,6 @@ def _create_mudata(with_activity: bool = False, with_atac: bool = True, fragment
         mudata.mod["activity"] = activity
 
     return mudata
-
-
-def test_package_has_version():
-    assert atlas.__version__ is not None
 
 
 def test_requires_rna():

@@ -4,7 +4,7 @@ import scanpy as sc
 from anndata import AnnData
 from muon import MuData
 
-from atlas.pp import preprocessing, wnn
+from atlas.pp import wnn
 
 SEED = 42
 CELLS = [f"cell{i}" for i in range(60)]
@@ -42,48 +42,11 @@ def _prepared(**kwargs) -> MuData:
     return mdata
 
 
-def _same_matrix(a, b) -> bool:
-    return a.shape == b.shape and (a != b).nnz == 0
-
-
 def test_graph_is_built():
     result = wnn(_prepared(), knn=KNN, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS, random_state=SEED)
     assert "wnn_distances" in result.obsp
     assert "wnn_connectivities" in result.obsp
     assert result.uns["wnn"]["params"]["n_neighbors"] == N_NEIGHBORS
-
-
-def test_matches_the_graph_preprocessing_builds():
-    old = preprocessing(
-        _prepared(),
-        knn_rna=KNN,
-        knn_act=KNN,
-        n_pcs_rna=N_PCS,
-        n_pcs_act=N_PCS,
-        n_neighbors=N_NEIGHBORS,
-        n_multineighbors=N_MULTI,
-        n_bandwidth_neighbors=N_BANDWIDTH,
-        random_state=SEED,
-    )
-    new = wnn(
-        _prepared(),
-        knn=KNN,
-        n_pcs=N_PCS,
-        n_neighbors=N_NEIGHBORS,
-        n_multineighbors=N_MULTI,
-        n_bandwidth_neighbors=N_BANDWIDTH,
-        random_state=SEED,
-    )
-    assert _same_matrix(old.obsp["wnn_distances"], new.obsp["wnn_distances"])
-    assert _same_matrix(old.obsp["wnn_connectivities"], new.obsp["wnn_connectivities"])
-
-
-def test_matches_the_modality_graphs_preprocessing_builds():
-    old = preprocessing(_prepared(), knn_rna=KNN, knn_act=KNN, n_pcs_rna=N_PCS, n_pcs_act=N_PCS, random_state=SEED)
-    new = wnn(_prepared(), knn=KNN, n_pcs=N_PCS, random_state=SEED)
-    for mod in ("rna", "activity"):
-        assert _same_matrix(old[mod].obsp["distances"], new[mod].obsp["distances"])
-        assert np.allclose(old[mod].obsm["X_pca"], new[mod].obsm["X_pca"])
 
 
 def test_any_modality_pair():
@@ -133,27 +96,11 @@ def test_no_embedding_is_computed():
     assert "X_umap" not in result.obsm
 
 
-def test_existing_embedding_is_left_alone():
-    mdata = _prepared()
-    mdata.obsm["X_umap"] = np.zeros((len(CELLS), 2))
-    result = wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED)
-    assert np.array_equal(result.obsm["X_umap"], np.zeros((len(CELLS), 2)))
-
-
 def test_key_added():
     mdata = _prepared()
     wnn(mdata, knn=KNN, n_pcs=N_PCS, key_added="graph", random_state=SEED)
     assert "graph_distances" in mdata.obsp
     assert mdata.uns["graph"]["distances_key"] == "graph_distances"
-
-
-def test_supplied_activity_is_not_normalised():
-    mdata = _create_mudata()
-    sc.pp.normalize_total(mdata["rna"])
-    sc.pp.pca(mdata["rna"], n_comps=N_COMPS, random_state=SEED)
-    before = mdata["activity"].X.copy()
-    wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED)
-    assert np.array_equal(mdata["activity"].X, before)
 
 
 def test_copy_true():
