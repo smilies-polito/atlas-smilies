@@ -19,6 +19,24 @@ def _per_modality(value, modalities: Sequence[str], name: str) -> dict:
 
 
 def _write_graph(target: MuData, source, key: str, route: str, **provenance) -> None:
+    """Store a neighbour graph on ``target``, taking it from ``source``.
+
+    This is the only place the graph contract is written. Every route ends here, so that
+    the keys, the record and the provenance cannot drift between them.
+
+    ``source`` is the object the graph was computed on: a restricted ``MuData`` for the
+    weighted route, a temporary ``AnnData`` for the representation route. No embedding is
+    written; neighbour construction and embedding are separate steps.
+
+    Raises
+    ------
+    KeyError
+        If ``source`` carries no record under ``key``.
+    ValueError
+        If ``source`` and ``target`` do not agree on their observations, which would leave
+        the graph's indices silently misaligned with the object.
+
+    """
     if key not in source.uns:
         raise KeyError(f"{key} not in the computed object's .uns")
 
@@ -52,8 +70,8 @@ def compute_gene_activity(
 ) -> MuData:
     """Derive a gene activity modality from chromatin accessibility.
 
-    Counts fragments over the supplied features, then normalizes and reduces the result,
-    exactly as :func:`atlas.pp.preprocessing` does. No neighbour graph is constructed.
+    This function exploits :func:`muon.atac.tl.count_fragments_features`.
+    Results are normalized and PCA is computed.
 
     Parameters
     ----------
@@ -90,6 +108,7 @@ def compute_gene_activity(
         If ``atac_key`` is not a modality of ``mudata``.
     ValueError
         If the fragment file cannot be located, or ``features`` is not provided.
+
     """
     data = mudata.copy() if copy else mudata
 
@@ -175,6 +194,7 @@ def wnn(
     -----
     A modality that already carries a neighbor graph keeps it rather than having one
     recomputed.
+
     """
     data = mudata.copy() if copy else mudata
 
@@ -255,6 +275,7 @@ def knn(
     ------
     KeyError
         If ``use_rep`` is not present in ``mudata.obsm``.
+
     """
     data = mudata.copy() if copy else mudata
 

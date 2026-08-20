@@ -14,6 +14,9 @@ Preprocessing utilities for multimodal single-cell data based on
     :toctree: generated
 
     pp.preprocessing
+    pp.compute_gene_activity
+    pp.wnn
+    pp.knn
 ```
 
 ## Tools
