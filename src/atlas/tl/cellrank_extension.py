@@ -7,7 +7,14 @@ from cellrank.estimators import GPCCA
 from cellrank.kernels import PseudotimeKernel
 from muon import MuData
 
-from .utils import _assign_state_colors, _cellrank_anndata, _invert_assignment, compute_entropy
+from .utils import (
+    _assign_state_colors,
+    _cellrank_anndata,
+    _deprecated_key_arg,
+    _invert_assignment,
+    _resolve_graph_key,
+    compute_entropy,
+)
 
 
 class CellRankExtension:
@@ -65,7 +72,8 @@ class CellRankExtension:
 
     def compute_kernel(
         self,
-        connectivity_key: str = "wnn_connectivities",
+        key: str | None = None,
+        connectivity_key: str | None = None,
         time_key: str = "pseudotime",
         cluster_key: str | None = None,
         backward: bool = False,
@@ -90,11 +98,21 @@ class CellRankExtension:
         underlying ``MuData`` object. The kernel is used to model directed
         transitions between cells based on their pseudotemporal ordering.
 
+        .. deprecated:: 1.1.0
+            The `connectivity_key` parameter is deprecated and
+            will be removed in version 2.0.0. It is retained in version
+            1.1.0 for backwards compatibility. Use `key` to adopt the new behavior.
+
         Parameters
         ----------
+        key
+            Key in ``mudata.uns`` where the graph is recorded. The connectivity matrix is
+            resolved from it, so nothing else is needed to identify the graph. Defaults to
+            ``"wnn"``.
         connectivity_key
             Key in ``mudata.obsp`` where the connectivity matrix corresponding to the
             WNN is stored.
+            Deprecated in 1.1.0 and will be removed in version 2.0.0.
         time_key
             Key in ``mudata.obs`` where pseudotime values are stored.
         cluster_key
@@ -140,7 +158,11 @@ class CellRankExtension:
 
 
         """
-        if connectivity_key not in self._mudata.obsp.keys():
+        _deprecated_key_arg("connectivity_key", connectivity_key, "key", key)
+
+        if connectivity_key is None:
+            connectivity_key = _resolve_graph_key(self._mudata, key if key is not None else "wnn", "connectivities")
+        elif connectivity_key not in self._mudata.obsp.keys():
             raise KeyError(f"{connectivity_key} not in mudata.obsp")
         if time_key not in self._mudata.obs.columns:
             raise KeyError(f"{time_key} not in mudata.obs")

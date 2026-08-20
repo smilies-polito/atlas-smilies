@@ -1,3 +1,5 @@
+import warnings
+
 import muon as mu
 import pandas as pd
 import scanpy as sc
@@ -39,11 +41,21 @@ def preprocessing(
     - Construction of a weighted nearest neighbor (WNN) graph
     - Computation of a multimodal UMAP embedding
 
+    .. deprecated:: 1.1.0
+       This function is deprecated and will be removed in version 2.0.0.
+       It is retained in version 1.1.0 for backwards compatibility.
+
+       The functionality has been split into the following functions:
+
+       - :func:`~atlas.pp.compute_gene_activity`,
+       - :func:`~atlas.pp.wnn`,
+       - :func:`~atlas.pp.knn`,
+       - :func:`~atlas.tl.umap`.
+
     Parameters
     ----------
     mudata
             MuData object containing at least the ``"rna"`` modality and either
-            an ``"activity"`` or ``"atac"`` modality.
     n_pcs_rna
             Number of principal components used for the RNA kNN graph.
     n_pcs_act
@@ -109,6 +121,14 @@ def preprocessing(
     >>> preprocess(mdata, n_pcs_rna=30, knn_rna=20)
 
     """
+    warnings.warn(
+        "`preprocessing` is deprecated since version 1.1.0 and will be "
+        "removed in version 2.0.0. Use `atlas.pp.compute_gene_activity`, "
+        "`atlas.pp.wnn`, `atlas.pp.knn` and `atlas.tl.umap` instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     data = mudata.copy() if copy else mudata
 
     if "rna" not in data.mod:
