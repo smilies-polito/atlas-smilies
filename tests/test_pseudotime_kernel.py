@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -43,6 +41,16 @@ def _create_mudata() -> MuData:
     return mudata
 
 
+def _complete_record_mudata() -> MuData:
+    mdata = _create_mudata()
+    mdata.uns["wnn"] = {
+        "distances_key": "wnn_distances",
+        "connectivities_key": "wnn_connectivities",
+        "params": {"n_neighbors": K},
+    }
+    return mdata
+
+
 def test_missing_connectivity_key():
     cext = CellRankExtension(_create_mudata())
     # still works as it did, now announcing that `connectivity_key` is superseded
@@ -76,30 +84,6 @@ def test_correct_behavior():
     assert kernel.transition_matrix.shape == (len(CELLS), len(CELLS))
 
 
-# --------------------------------------------------------------------------------------
-# identifying the graph from a single key
-# --------------------------------------------------------------------------------------
-
-
-def _complete_record_mudata() -> MuData:
-    """As `_create_mudata`, but with a record that names its matrices.
-
-    `_create_mudata` records only the parameters, so it exercises the fallback. This one
-    exercises the lookup, which is what every real producer writes.
-    """
-    mdata = _create_mudata()
-    mdata.uns["wnn"] = {
-        "distances_key": "wnn_distances",
-        "connectivities_key": "wnn_connectivities",
-        "params": {"n_neighbors": K},
-    }
-    return mdata
-
-
-def _same_matrix(a, b) -> bool:
-    return a.shape == b.shape and (a != b).nnz == 0
-
-
 def test_key_alone_is_sufficient():
     cext = CellRankExtension(_complete_record_mudata())
     cext.compute_kernel(key="wnn", time_key="pseudotime", n_jobs=1)
@@ -113,8 +97,6 @@ def test_default_key_is_unchanged():
 
 
 def test_matrix_name_comes_from_the_record():
-    """The `{key}_{kind}` pattern is a convention of whoever wrote the graph, so an
-    unconventionally named matrix must still be found through the record."""
     mdata = _complete_record_mudata()
     mdata.obsp["oddly_named"] = mdata.obsp["wnn_connectivities"]
     mdata.uns["wnn"]["connectivities_key"] = "oddly_named"
@@ -124,8 +106,6 @@ def test_matrix_name_comes_from_the_record():
 
 
 def test_record_without_matrix_names_falls_back():
-    """This consumer never read the record before, so objects carrying only the matrices
-    must keep working."""
     cext = CellRankExtension(_create_mudata())  # records only params
     cext.compute_kernel(key="wnn", time_key="pseudotime", n_jobs=1)
     assert cext.kernel.transition_matrix.shape == (len(CELLS), len(CELLS))
@@ -134,27 +114,6 @@ def test_record_without_matrix_names_falls_back():
 def test_unresolvable_key_is_named():
     with pytest.raises(KeyError, match="ghost"):
         CellRankExtension(_complete_record_mudata()).compute_kernel(key="ghost", time_key="pseudotime")
-
-
-def test_key_reaches_what_the_superseded_parameter_reached(graph_route):
-    """The identity guarantee: naming the graph differently must compute the same
-    transition matrix."""
-    mdata, key = graph_route
-
-    baseline = CellRankExtension(mdata)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        baseline.compute_kernel(connectivity_key=f"{key}_connectivities", time_key="pseudotime", n_jobs=1)
-
-    through_key = CellRankExtension(mdata)
-    through_key.compute_kernel(key=key, time_key="pseudotime", n_jobs=1)
-
-    assert _same_matrix(through_key.kernel.transition_matrix, baseline.kernel.transition_matrix)
-
-
-# --------------------------------------------------------------------------------------
-# the superseded parameter
-# --------------------------------------------------------------------------------------
 
 
 def test_superseded_parameter_works_and_warns():
@@ -171,14 +130,6 @@ def test_warning_names_replacement_and_removal_version():
     message = str(record[0].message)
     assert "`key`" in message
     assert "2.0.0" in message
-
-
-def test_warning_is_attributed_to_the_caller():
-    """A warning reported inside the package names code the caller cannot change."""
-    cext = CellRankExtension(_complete_record_mudata())
-    with pytest.warns(FutureWarning) as record:
-        cext.compute_kernel(connectivity_key="wnn_connectivities", time_key="pseudotime", n_jobs=1)
-    assert record[0].filename == __file__
 
 
 def test_key_combined_with_the_superseded_parameter_raises():

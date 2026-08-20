@@ -28,7 +28,7 @@ _SEED = 42
 _CELLS = [f"cell{i}" for i in range(60)]
 _GENES = [f"gene{i}" for i in range(20)]
 _ACT_VAR = [f"act{i}" for i in range(15)]
-_KNN, _N_PCS, _N_NEIGHBORS, _N_COMPS = 5, 5, 5, 10
+_KNN, _N_PCS, _N_NEIGHBORS, _N_COMPS, _N_MULTI, _N_BANDWIDTH = 5, 5, 5, 10, 5, 5
 
 
 def _base(with_activity: bool = True) -> MuData:
@@ -56,8 +56,8 @@ def _via_preprocessing() -> tuple[MuData, str]:
         n_pcs_rna=_N_PCS,
         n_pcs_act=_N_PCS,
         n_neighbors=_N_NEIGHBORS,
-        n_multineighbors=30,
-        n_bandwidth_neighbors=_KNN,
+        n_multineighbors=_N_MULTI,
+        n_bandwidth_neighbors=_N_BANDWIDTH,
         random_state=_SEED,
     )
     mudata.obs["pseudotime"] = np.linspace(0, 1, len(_CELLS))
@@ -66,7 +66,15 @@ def _via_preprocessing() -> tuple[MuData, str]:
 
 def _via_wnn() -> tuple[MuData, str]:
     mudata = _base()
-    wnn(mudata, knn=_KNN, n_pcs=_N_PCS, n_neighbors=_N_NEIGHBORS, random_state=_SEED)
+    wnn(
+        mudata,
+        knn=_KNN,
+        n_pcs=_N_PCS,
+        n_neighbors=_N_NEIGHBORS,
+        n_multineighbors=_N_MULTI,
+        n_bandwidth_neighbors=_N_BANDWIDTH,
+        random_state=_SEED,
+    )
     return mudata, "wnn"
 
 
@@ -79,7 +87,16 @@ def _via_knn() -> tuple[MuData, str]:
 
 def _via_custom_key() -> tuple[MuData, str]:
     mudata = _base()
-    wnn(mudata, knn=_KNN, n_pcs=_N_PCS, n_neighbors=_N_NEIGHBORS, key_added="graph", random_state=_SEED)
+    wnn(
+        mudata,
+        knn=_KNN,
+        n_pcs=_N_PCS,
+        n_neighbors=_N_NEIGHBORS,
+        n_multineighbors=_N_MULTI,
+        n_bandwidth_neighbors=_N_BANDWIDTH,
+        key_added="graph",
+        random_state=_SEED,
+    )
     return mudata, "graph"
 
 

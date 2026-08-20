@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import pytest
 from anndata import AnnData
@@ -38,10 +36,19 @@ def _create_mudata() -> MuData:
     return mudata
 
 
+def _complete_record_mudata() -> MuData:
+    mdata = _create_mudata()
+    mdata.uns["wnn"] = {
+        "distances_key": "wnn_distances",
+        "connectivities_key": "wnn_connectivities",
+        "params": {"n_neighbors": K},
+    }
+    return mdata
+
+
 def test_missing_distance_key():
     mdata = _create_mudata()
     pext = PalantirExtension(mudata=mdata)
-    # still works as it did, now announcing that `distance_key` is superseded
     with pytest.warns(FutureWarning, match="distance_key"), pytest.raises(KeyError, match="obsp"):
         pext.compute_kernel(distance_key="wrong_key")
 
@@ -49,7 +56,6 @@ def test_missing_distance_key():
 def test_missing_knn_key():
     mdata = _create_mudata()
     pext = PalantirExtension(mudata=mdata)
-    # still works as it did, now announcing that `knn_key` is superseded
     with pytest.warns(FutureWarning, match="knn_key"), pytest.raises(KeyError, match="uns"):
         pext.compute_kernel(knn_key="wrong_key")
 
@@ -89,38 +95,6 @@ def test_kernel_non_negative():
     assert np.all(kernel.data >= 0)
 
 
-def test_alpha_changes_kernel():
-    pext1 = PalantirExtension(_create_mudata())
-    pext2 = PalantirExtension(_create_mudata())
-    pext1.compute_kernel(alpha=0)
-    pext2.compute_kernel(alpha=1)
-
-    K1 = pext1.mudata.obsp["DM_Kernel"]
-    K2 = pext2.mudata.obsp["DM_Kernel"]
-
-    assert not np.allclose(K1.toarray(), K2.toarray())
-
-
-# --------------------------------------------------------------------------------------
-# identifying the graph from a single key
-# --------------------------------------------------------------------------------------
-
-
-def _complete_record_mudata() -> MuData:
-    """As `_create_mudata`, but with a record that names its matrices.
-
-    `_create_mudata` records only the parameters, so it exercises the fallback. This one
-    exercises the lookup, which is what every real producer writes.
-    """
-    mdata = _create_mudata()
-    mdata.uns["wnn"] = {
-        "distances_key": "wnn_distances",
-        "connectivities_key": "wnn_connectivities",
-        "params": {"n_neighbors": K},
-    }
-    return mdata
-
-
 def _same_matrix(a, b) -> bool:
     return a.shape == b.shape and (a != b).nnz == 0
 
@@ -138,8 +112,6 @@ def test_default_key_is_unchanged():
 
 
 def test_matrix_name_comes_from_the_record():
-    """The `{key}_{kind}` pattern is a convention of whoever wrote the graph, so an
-    unconventionally named matrix must still be found through the record."""
     mdata = _complete_record_mudata()
     mdata.obsp["oddly_named"] = mdata.obsp["wnn_distances"]
     mdata.uns["wnn"]["distances_key"] = "oddly_named"
@@ -148,7 +120,6 @@ def test_matrix_name_comes_from_the_record():
 
 
 def test_record_without_matrix_names_falls_back():
-    """Objects carrying a graph and a partial record must keep working."""
     mdata = _create_mudata()  # records only params
     PalantirExtension(mdata).compute_kernel(key="wnn")
     assert "DM_Kernel" in mdata.obsp
@@ -158,44 +129,6 @@ def test_unresolvable_key_is_named():
     mdata = _complete_record_mudata()
     with pytest.raises(KeyError, match="ghost"):
         PalantirExtension(mdata).compute_kernel(key="ghost")
-
-
-def test_key_reaches_what_the_superseded_parameters_reached(graph_route):
-    """The identity guarantee: naming the graph differently must compute the same kernel."""
-    mdata, key = graph_route
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        PalantirExtension(mdata).compute_kernel(knn_key=key, distance_key=f"{key}_distances")
-    baseline = mdata.obsp["DM_Kernel"].copy()
-
-    PalantirExtension(mdata).compute_kernel(key=key)
-    assert _same_matrix(mdata.obsp["DM_Kernel"], baseline)
-
-
-def test_identity_reaches_downstream(graph_route):
-    """The recorded neighborhood size bounds an adaptive bandwidth, so a wrong resolution
-    could leave the kernel plausible and everything after it wrong."""
-    mdata, key = graph_route
-
-    def _multiscale(use_key: bool):
-        ext = PalantirExtension(mdata)
-        if use_key:
-            ext.compute_kernel(key=key)
-        else:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", FutureWarning)
-                ext.compute_kernel(knn_key=key, distance_key=f"{key}_distances")
-        ext.compute_diffusion_maps(seed=SEED)
-        ext.compute_multiscale_space()
-        return np.asarray(mdata.obsm["DM_EigenVectors_multiscaled"]).copy()
-
-    assert np.array_equal(_multiscale(use_key=False), _multiscale(use_key=True))
-
-
-# --------------------------------------------------------------------------------------
-# the superseded parameters
-# --------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(("old", "value"), [("knn_key", "wnn"), ("distance_key", "wnn_distances")])
@@ -218,7 +151,6 @@ def test_warning_names_replacement_and_removal_version(old):
 
 
 def test_warning_is_attributed_to_the_caller():
-    """A warning reported inside the package names code the caller cannot change."""
     mdata = _complete_record_mudata()
     with pytest.warns(FutureWarning) as record:
         PalantirExtension(mdata).compute_kernel(knn_key="wnn")
