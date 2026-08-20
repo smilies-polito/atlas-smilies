@@ -43,7 +43,15 @@ def _prepared(**kwargs) -> MuData:
 
 
 def test_graph_is_built():
-    result = wnn(_prepared(), knn=KNN, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS, random_state=SEED)
+    result = wnn(
+        _prepared(),
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert "wnn_distances" in result.obsp
     assert "wnn_connectivities" in result.obsp
     assert result.uns["wnn"]["params"]["n_neighbors"] == N_NEIGHBORS
@@ -54,21 +62,46 @@ def test_any_modality_pair():
     sc.pp.normalize_total(mdata["rna"])
     sc.pp.pca(mdata["rna"], n_comps=N_COMPS, random_state=SEED)
     sc.pp.pca(mdata["atac"], n_comps=N_COMPS, random_state=SEED)
-    result = wnn(mdata, modalities=("rna", "atac"), knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    result = wnn(
+        mdata,
+        modalities=("rna", "atac"),
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert "wnn_distances" in result.obsp
     assert result.uns["wnn"]["atlas"]["modalities"] == ["rna", "atac"]
 
 
 def test_scalar_settings_apply_to_every_modality():
     mdata = _prepared()
-    wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    wnn(
+        mdata,
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     for mod in ("rna", "activity"):
         assert mdata[mod].uns["neighbors"]["params"]["n_neighbors"] == KNN
 
 
 def test_per_modality_settings():
     mdata = _prepared()
-    wnn(mdata, knn={"rna": 4, "activity": 7}, n_pcs=N_PCS, random_state=SEED)
+    wnn(
+        mdata,
+        knn={"rna": 4, "activity": 7},
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert mdata["rna"].uns["neighbors"]["params"]["n_neighbors"] == 4
     assert mdata["activity"].uns["neighbors"]["params"]["n_neighbors"] == 7
 
@@ -76,36 +109,79 @@ def test_per_modality_settings():
 def test_existing_modality_graph_is_reused():
     mdata = _prepared()
     sc.pp.neighbors(mdata["rna"], n_neighbors=9, n_pcs=N_PCS, random_state=SEED)
-    wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    wnn(mdata, knn=KNN, n_pcs=N_PCS, n_multineighbors=N_MULTI, n_bandwidth_neighbors=N_BANDWIDTH, random_state=SEED)
     assert mdata["rna"].uns["neighbors"]["params"]["n_neighbors"] == 9
 
 
 def test_modalities_are_not_removed():
     mdata = _prepared(extra_mod=True)
-    result = wnn(mdata, modalities=("rna", "activity"), knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    result = wnn(
+        mdata,
+        modalities=("rna", "activity"),
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert set(result.mod) == {"rna", "activity", "atac", "other"}
 
 
 def test_route_is_recorded():
-    result = wnn(_prepared(), knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    result = wnn(
+        _prepared(),
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert result.uns["wnn"]["atlas"]["route"] == "wnn"
 
 
 def test_no_embedding_is_computed():
-    result = wnn(_prepared(), knn=KNN, n_pcs=N_PCS, random_state=SEED)
+    result = wnn(
+        _prepared(),
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert "X_umap" not in result.obsm
 
 
 def test_key_added():
     mdata = _prepared()
-    wnn(mdata, knn=KNN, n_pcs=N_PCS, key_added="graph", random_state=SEED)
+    wnn(
+        mdata,
+        knn=KNN,
+        n_pcs=N_PCS,
+        key_added="graph",
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+    )
     assert "graph_distances" in mdata.obsp
     assert mdata.uns["graph"]["distances_key"] == "graph_distances"
 
 
 def test_copy_true():
     mdata = _prepared()
-    result = wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED, copy=True)
+    result = wnn(
+        mdata,
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+        copy=True,
+    )
     assert result is not mdata
     assert "wnn_distances" in result.obsp
     assert "wnn_distances" not in mdata.obsp
@@ -113,7 +189,16 @@ def test_copy_true():
 
 def test_copy_false():
     mdata = _prepared()
-    result = wnn(mdata, knn=KNN, n_pcs=N_PCS, random_state=SEED, copy=False)
+    result = wnn(
+        mdata,
+        knn=KNN,
+        n_pcs=N_PCS,
+        n_neighbors=N_NEIGHBORS,
+        n_multineighbors=N_MULTI,
+        n_bandwidth_neighbors=N_BANDWIDTH,
+        random_state=SEED,
+        copy=False,
+    )
     assert result is mdata
     assert "wnn_distances" in mdata.obsp
 

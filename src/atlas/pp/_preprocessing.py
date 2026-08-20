@@ -10,10 +10,6 @@ from .utils import _safe_mudata
 
 
 def _per_modality(value, modalities: Sequence[str], name: str) -> dict:
-    """Resolve a scalar-or-mapping parameter into one value per modality.
-
-    A single value applies to every modality; a mapping supplies each one its own.
-    """
     if isinstance(value, Mapping):
         missing = [m for m in modalities if m not in value]
         if missing:
@@ -23,23 +19,6 @@ def _per_modality(value, modalities: Sequence[str], name: str) -> dict:
 
 
 def _write_graph(target: MuData, source, key: str, route: str, **provenance) -> None:
-    """Store a neighbour graph on ``target``, taking it from ``source``.
-
-    This is the only place the graph contract is written. Every route ends here, so that
-    the keys, the record and the provenance cannot drift between them.
-
-    ``source`` is the object the graph was computed on: a restricted ``MuData`` for the
-    weighted route, a temporary ``AnnData`` for the representation route. No embedding is
-    written; neighbour construction and embedding are separate steps.
-
-    Raises
-    ------
-    KeyError
-        If ``source`` carries no record under ``key``.
-    ValueError
-        If ``source`` and ``target`` do not agree on their observations, which would leave
-        the graph's indices silently misaligned with the object.
-    """
     if key not in source.uns:
         raise KeyError(f"{key} not in the computed object's .uns")
 
@@ -198,7 +177,6 @@ def wnn(
     recomputed.
     """
     data = mudata.copy() if copy else mudata
-    modalities = tuple(modalities)
 
     missing = [m for m in modalities if m not in data.mod]
     if missing:
