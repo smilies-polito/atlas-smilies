@@ -12,6 +12,14 @@ SEED, K, NUM_WAYPOINTS = 42, 10, 20
 CELLS = [f"cell{i}" for i in range(100)]
 GENES = [f"gene{i}" for i in range(20)]
 EARLY_CELL = "cell0"
+# The two tests below are about how states are recorded, named and coloured, not about whether
+# Palantir can find them. Detection is left to `test_run_with_barcodes` and `test_run_with_clusters`:
+# it turns on an outlier test against a median-absolute-deviation cutoff over the stationary
+# distribution of the waypoint Markov chain, and on data this size the edges of that chain sit on
+# near-ties, so a perturbation of 1e-12 - below the spread between two BLAS implementations - decides
+# whether one state is found or none. Naming the endpoints keeps the recording tests deterministic,
+# and two of them exercise the disambiguation a single state never reaches.
+TERMINAL_CELLS = ["cell50", "cell99"]
 ACTIVITY_VAR = [f"act{i}" for i in range(15)]
 MULTISCALE = pd.DataFrame(np.random.default_rng(SEED).random((len(CELLS), 5)), index=CELLS)
 EIGENVECTORS = pd.DataFrame(np.random.default_rng(SEED).random((len(CELLS), 5)), index=CELLS)
@@ -120,6 +128,7 @@ def test_states_are_recorded_as_columns_with_colours():
         num_waypoints=NUM_WAYPOINTS,
         eigvec_key="eigenvectors",
         eigvec_multi_key="multiscale",
+        terminal_states=TERMINAL_CELLS,
     )
     mdata = pext.mudata
 
@@ -151,6 +160,7 @@ def test_naming_states_after_a_cluster_only_renames_them():
         num_waypoints=NUM_WAYPOINTS,
         eigvec_key="eigenvectors",
         eigvec_multi_key="multiscale",
+        terminal_states=TERMINAL_CELLS,
     )
     bare = bare.mudata
     named = PalantirExtension(_create_mudata())
@@ -161,6 +171,7 @@ def test_naming_states_after_a_cluster_only_renames_them():
         num_waypoints=NUM_WAYPOINTS,
         eigvec_key="eigenvectors",
         eigvec_multi_key="multiscale",
+        terminal_states=TERMINAL_CELLS,
     )
     named = named.mudata
 
