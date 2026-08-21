@@ -5,10 +5,7 @@ from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scFates as scf
-import scvelo as scv
 from anndata import AnnData
-from cellrank._utils._lineage import Lineage
 from muon import MuData
 
 from .utils import MultiBranchGAM
@@ -73,6 +70,10 @@ def plot_embedding(
         stacklevel=2,
     )
 
+    # Loaded after the warning, not before it: importing scvelo installs eleven warning
+    # filters, which would swallow the FutureWarning raised above.
+    import scvelo as scv  # at the point of use, not on `import atlas`
+
     if observation not in mudata.obs.columns:
         warnings.warn(f"WARNING: {observation} not a valid cell metadata", stacklevel=2)
         return
@@ -114,6 +115,12 @@ def plot_fate_probabilities(
     them onto a specified embedding (such as UMAP). Cells are colored using
     lineage-specific gradients, allowing inspection of differentiation trajectories.
 
+    .. deprecated:: 1.1.0
+       This function is deprecated and will be removed in version 2.0.0.
+       It is retained in version 1.1.0 for backwards compatibility.
+
+       It is superseded by :func:`~atlas.pl.fate_probabilities`
+
     Parameters
     ----------
     mudata
@@ -146,6 +153,18 @@ def plot_fate_probabilities(
         If no valid terminal states are selected.
 
     """
+    warnings.warn(
+        "`plot_fate_probabilities` is deprecated since version 1.1.0 and will be "
+        "removed in version 2.0.0. Use `atlas.pl.fate_probabilities` instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    # Loaded after the warning, not before it: importing scvelo installs eleven warning
+    # filters, which would swallow the FutureWarning raised above.
+    import scvelo as scv  # at the point of use, not on `import atlas`
+    from cellrank._utils._lineage import Lineage  # at the point of use, not on `import atlas`
+
     if fate_probability_key not in mudata.obsm.keys():
         warnings.warn("WARNING: fate probabilities are not available; Try recompute them.", stacklevel=2)
         return
@@ -416,6 +435,9 @@ def plot_tree(
     -----
     Requires precomputed fate probabilities with at least 2 terminal states.
     """
+    import scFates as scf  # at the point of use, not on `import atlas`
+    from cellrank._utils._lineage import Lineage  # at the point of use, not on `import atlas`
+
     if root_params is None:
         root_params = {}
     fate_prob_key, lineage_key = "term_states_fwd_memberships", "lineages_fwd"

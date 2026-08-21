@@ -6,6 +6,7 @@
 
     atlas.pl.embedding
     atlas.pl.trends
+    atlas.pl.fate_probabilities
     atlas.pl.plot_tree
     atlas.pl.plot_trends
     atlas.pl.plot_fate_probabilities

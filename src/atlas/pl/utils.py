@@ -1,12 +1,16 @@
 import warnings
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from anndata import AnnData
 from muon import MuData
 from pygam import LinearGAM, s
 
 from atlas.tl.utils import _KEY_REMOVAL_VERSION, _LEGACY_PALETTE_KEY
+
+_FATE_PRODUCER = "`atlas.tl.CellRankExtension.compute_fate_probabilities`"
+_EMBEDDING_PRODUCER = "`atlas.tl.umap`"
 
 
 def _weighted_quantile(x: np.ndarray, w: np.ndarray, q: float) -> float:
@@ -242,3 +246,75 @@ def _state_colors(mudata: MuData, kind: str) -> dict[str, str]:
         return {str(name): color for name, color in superseded.items()}
 
     return {}
+
+
+def _fate_frame(mudata: MuData, key: str) -> pd.DataFrame:
+    """The recorded probabilities as a frame whose columns name the fates."""
+    if key not in mudata.obsm:
+        available = ", ".join(sorted(mudata.obsm)) or "nothing"
+        raise KeyError(
+            f"'{key}' not in mudata.obsm, which carries {available}; run {_FATE_PRODUCER} to compute fate probabilities"
+        )
+
+    recorded = mudata.obsm[key]
+    if isinstance(recorded, pd.DataFrame):
+        return recorded
+
+
+def _resolve_basis(mudata: MuData, basis: str) -> None:
+    if basis in mudata.obsm or f"X_{basis}" in mudata.obsm:
+        return
+
+    modality, _, _ = basis.partition(":")
+    if modality in mudata.mod:
+        return
+
+    available = ", ".join(sorted(key for key in mudata.obsm if key not in mudata.mod))
+    if not available:
+        raise KeyError(
+            f"'{basis}' not in mudata.obsm, which carries no embedding; run {_EMBEDDING_PRODUCER} to compute one"
+        )
+
+    raise KeyError(
+        f"'{basis}' not in mudata.obsm; run {_EMBEDDING_PRODUCER} to compute an embedding, "
+        f"or pass `basis` naming one of those present ({available})"
+    )
+
+
+def _in_modality(adata: AnnData, modality: str, key: str, use_raw: bool | None) -> bool:
+    name = key.split(":", 1)[1] if key.startswith(f"{modality}:") else key
+
+    if name in adata.var_names:
+        return True
+
+    return (use_raw is None or use_raw) and adata.raw is not None and name in adata.raw.var_names
+
+
+def _resolve_color(mudata: MuData, color: str | Sequence[str], use_raw: bool | None) -> None:
+
+    keys = [color] if isinstance(color, str) else list(color)
+
+    for key in keys:
+        if key in mudata.obs.columns:
+            continue
+
+        carriers = [m for m in mudata.mod if _in_modality(mudata.mod[m], m, key, use_raw)]
+
+        if len(carriers) == 1:
+            continue
+
+        if len(carriers) > 1 and ":" not in key:
+            raise KeyError(
+                f"'{key}' is a feature of more than one modality ({', '.join(sorted(carriers))}); "
+                f"pass `<modality>:{key}` naming the one to color by"
+            )
+
+        if carriers:
+            continue
+
+        searched = ", ".join(sorted(mudata.mod))
+        raise KeyError(
+            f"'{key}' is neither a column of mudata.obs nor a feature of any modality "
+            f"(searched mudata.obs and the var_names of {searched}); "
+            "pass `<modality>:<feature>` to name a feature of a particular modality"
+        )
