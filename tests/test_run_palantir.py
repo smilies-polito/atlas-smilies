@@ -12,13 +12,6 @@ SEED, K, NUM_WAYPOINTS = 42, 10, 20
 CELLS = [f"cell{i}" for i in range(100)]
 GENES = [f"gene{i}" for i in range(20)]
 EARLY_CELL = "cell0"
-# The two tests below are about how states are recorded, named and coloured, not about whether
-# Palantir can find them. Detection is left to `test_run_with_barcodes` and `test_run_with_clusters`:
-# it turns on an outlier test against a median-absolute-deviation cutoff over the stationary
-# distribution of the waypoint Markov chain, and on data this size the edges of that chain sit on
-# near-ties, so a perturbation of 1e-12 - below the spread between two BLAS implementations - decides
-# whether one state is found or none. Naming the endpoints keeps the recording tests deterministic,
-# and two of them exercise the disambiguation a single state never reaches.
 TERMINAL_CELLS = ["cell50", "cell99"]
 ACTIVITY_VAR = [f"act{i}" for i in range(15)]
 MULTISCALE = pd.DataFrame(np.random.default_rng(SEED).random((len(CELLS), 5)), index=CELLS)
@@ -48,9 +41,8 @@ def _create_mudata() -> MuData:
 
     mudata.uns["wnn"] = {"params": {"n_neighbors": K}}
 
-    # mock multiscale space
-    mudata.obsm["multiscale"] = MULTISCALE
-    mudata.obsm["eigenvectors"] = EIGENVECTORS
+    mudata.obsm["multiscale"] = MULTISCALE.copy()
+    mudata.obsm["eigenvectors"] = EIGENVECTORS.copy()
     return mudata
 
 

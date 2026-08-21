@@ -1,8 +1,12 @@
 import warnings
+from collections.abc import Mapping
 
 import numpy as np
+import pandas as pd
 from muon import MuData
 from pygam import LinearGAM, s
+
+from atlas.tl.utils import _KEY_REMOVAL_VERSION, _LEGACY_PALETTE_KEY
 
 
 def _weighted_quantile(x: np.ndarray, w: np.ndarray, q: float) -> float:
@@ -212,3 +216,29 @@ class MultiBranchGAM:
             }
 
         self._predictions = results
+
+
+def _state_colors(mudata: MuData, kind: str) -> dict[str, str]:
+    column = mudata.obs.get(kind)
+    colors = mudata.uns.get(f"{kind}_colors")
+
+    if column is not None and isinstance(column.dtype, pd.CategoricalDtype) and colors is not None:
+        categories = [str(name) for name in column.cat.categories]
+        colors = list(colors)
+        if len(colors) == len(categories):
+            return dict(zip(categories, colors, strict=True))
+
+    superseded = mudata.uns.get(_LEGACY_PALETTE_KEY)
+    if isinstance(superseded, Mapping) and superseded:
+        warnings.warn(
+            f"`mudata.uns['{_LEGACY_PALETTE_KEY}']` is superseded by "
+            f"`mudata.uns['{kind}_colors']` and will be removed in {_KEY_REMOVAL_VERSION}. It is "
+            f"being read for this call. Run `atlas.tl.migrate_states` to record this object's "
+            f"colours in the current form; a stored key cannot announce this when it is read, so "
+            f"nothing else will.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return {str(name): color for name, color in superseded.items()}
+
+    return {}

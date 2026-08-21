@@ -12,6 +12,7 @@ from .evaluate import (
     terminal_state_silhouette,
 )
 from .palantir_extension import PalantirExtension
+from .trends import MultiLineageGAM
 from .utils import _assign_state_colors, compute_entropy, migrate_states, reset_state_colors
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "terminal_state_silhouette",
     "reset_state_colors",
     "migrate_states",
+    "MultiLineageGAM",
 ]
