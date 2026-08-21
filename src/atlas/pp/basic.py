@@ -107,6 +107,7 @@ def preprocessing(
             - modality-specific kNN graphs in ``.obsp``
             - weighted nearest neighbor graph stored under ``.uns["wnn"]``
             - multimodal UMAP embedding stored in ``.obsm["X_umap"]``
+
     Note that if modalities "rna" and "atac" are provided  then a new MuData object is created with "rna" and "activity" as modalities.
 
     Raises

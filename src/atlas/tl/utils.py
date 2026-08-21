@@ -393,3 +393,22 @@ def migrate_states(mudata: MuData) -> None:
         palette.setdefault(str(name), color)
 
     _assign_state_colors(mudata)
+
+
+def _states_mapping(mudata: MuData, kind: str) -> dict[str, list[str]]:
+    if kind in mudata.obs.columns:
+        return _invert_assignment(mudata.obs[kind])
+
+    superseded = mudata.uns.get(kind)
+    if isinstance(superseded, Mapping) and superseded:
+        warnings.warn(
+            f"`mudata.uns['{kind}']` is superseded by `mudata.obs['{kind}']` and will be "
+            f"removed in {_KEY_REMOVAL_VERSION}. It is being read for this call. Run "
+            f"`atlas.tl.migrate_states` to record this object's states in the current form; "
+            f"a stored key cannot announce this when it is read, so nothing else will.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return {str(name): list(cells) for name, cells in superseded.items()}
+
+    return {}
