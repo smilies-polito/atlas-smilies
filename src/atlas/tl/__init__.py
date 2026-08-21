@@ -12,7 +12,7 @@ from .evaluate import (
     terminal_state_silhouette,
 )
 from .palantir_extension import PalantirExtension
-from .utils import _assign_state_colors, compute_entropy
+from .utils import _assign_state_colors, compute_entropy, migrate_states, reset_state_colors
 
 __all__ = [
     "PalantirExtension",
@@ -23,4 +23,6 @@ __all__ = [
     "fate_concentration_index",
     "terminal_pseudotime_enrichment",
     "terminal_state_silhouette",
+    "reset_state_colors",
+    "migrate_states",
 ]
