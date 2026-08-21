@@ -15,25 +15,6 @@ _KEY_REMOVAL_VERSION = "2.0.0"
 
 
 def _deprecated_key_arg(old_name: str, value, key, key_value) -> None:
-    """Warn that ``old_name`` is superseded, or fail if it is combined with ``key``.
-
-    Parameters
-    ----------
-    old_name
-        Name of the superseded parameter, as the caller wrote it.
-    value
-        What the caller passed for it, or ``None`` if they did not.
-    key
-        Name of the parameter replacing it.
-    key_value
-        What the caller passed for ``key``, or ``None`` if they did not.
-
-    Raises
-    ------
-    ValueError
-        If both are supplied. Which was intended cannot be known, and preferring either
-        would silently select a graph the caller did not ask for.
-    """
     if value is None:
         return
 
@@ -52,34 +33,6 @@ def _deprecated_key_arg(old_name: str, value, key, key_value) -> None:
 
 
 def _resolve_graph_key(mudata: MuData, key: str, kind: str) -> str:
-    """Resolve the name of a stored graph matrix from the record describing it.
-
-    The record written alongside a neighbor graph names each matrix in full, so the name is
-    looked up rather than assembled: the ``{key}_{kind}`` pattern is a convention of
-    whoever wrote the graph, not a guarantee.
-
-    Falls back to that convention when the record is absent or omits the name, so that
-    objects carrying a graph without a complete record keep working.
-
-    Parameters
-    ----------
-    mudata
-        Multimodal annotated data object.
-    key
-        Key in ``mudata.uns`` under which the graph is recorded.
-    kind
-        Either ``"distances"`` or ``"connectivities"``.
-
-    Returns
-    -------
-    Name of the matrix in ``mudata.obsp``.
-
-    Raises
-    ------
-    KeyError
-        If neither the record nor the conventional name identifies a matrix that is
-        present.
-    """
     record = mudata.uns.get(key)
     name = record.get(f"{kind}_key") if isinstance(record, Mapping) else None
     if name is None:
@@ -91,28 +44,6 @@ def _resolve_graph_key(mudata: MuData, key: str, kind: str) -> str:
 
 
 def _cellrank_anndata(mudata: MuData, connectivity_key: str, cluster_key: str | None = None) -> AnnData:
-    """Build the temporary :class:`~anndata.AnnData` required by the CellRank interface.
-
-    CellRank inspects the shape and variable names of the object it is given, so this
-    view carries a correctly shaped placeholder matrix, the variable index of the
-    ``"rna"`` modality, the observation frame, and the requested pairwise matrix.
-
-    The original ``MuData`` is left unchanged.
-
-    Parameters
-    ----------
-    mudata
-        Multimodal annotated data object.
-    connectivity_key
-        Key in ``mudata.obsp`` holding the connectivity matrix to carry over.
-    cluster_key
-        Column of ``mudata.obs`` to cast to ``category``, as CellRank expects. Ignored
-        when ``None``.
-
-    Returns
-    -------
-    A temporary :class:`~anndata.AnnData` view over ``mudata``.
-    """
     adata = AnnData(
         X=csr_matrix((mudata.n_obs, mudata["rna"].n_vars)),
         obs=mudata.obs.copy(),
@@ -127,26 +58,6 @@ def _cellrank_anndata(mudata: MuData, connectivity_key: str, cluster_key: str | 
 
 
 def _palantir_anndata(mudata: MuData, eigvec_key: str, multiscale: pd.DataFrame | np.ndarray) -> AnnData:
-    """Build the temporary :class:`~anndata.AnnData` required by the Palantir interface.
-
-    Palantir's cell-selection helpers read only ``obs``, ``obs_names`` and one
-    multidimensional annotation, so this view carries nothing else.
-
-    The original ``MuData`` is left unchanged.
-
-    Parameters
-    ----------
-    mudata
-        Multimodal annotated data object.
-    eigvec_key
-        Key under which to register ``multiscale`` in ``.obsm``.
-    multiscale
-        Multiscale diffusion representation, of shape ``(n_cells, n_components)``.
-
-    Returns
-    -------
-    A temporary :class:`~anndata.AnnData` view over ``mudata``.
-    """
     adata = AnnData(obs=mudata.obs.copy())
     adata.obsm[eigvec_key] = multiscale
     return adata
