@@ -2,10 +2,12 @@ import os
 import warnings
 from collections.abc import Sequence
 from math import ceil
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import muon as mu
 import numpy as np
+import pandas as pd
 from anndata import AnnData
 from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
@@ -17,6 +19,9 @@ from .utils import _fate_frame, _resolve_basis, _resolve_color, _state_colors
 
 _DEFAULT_LINEAGE_COLOR = "grey"
 _UNDECIDED_COLOR = "lightgrey"
+_TIME_PRODUCER = "`atlas.tl.PalantirExtension.run` or `atlas.tl.CellRankExtension.compute_kernel`"
+_LINEAGE_KEY, _STATES_KEY = "lineages_fwd", "term_states_fwd"
+_TREE_COLUMNS = frozenset({"t", "t_sd", "seg", "edge", "milestones"})
 
 
 def embedding(
@@ -69,19 +74,8 @@ def embedding(
     -----
     A colour key is resolved against ``mudata.obs`` before the modalities, so a name
     occurring in both is taken from ``.obs``. Qualifying it as ``"<modality>:<feature>"``
-    selects the feature instead, and is also what distinguishes a feature name carried by
-    more than one modality.
+    selects the feature instead.
 
-    Colouring by a categorical key records the colours chosen for it on ``mudata`` as
-    ``.uns["<key>_colors"]``, following the convention the scverse ecosystem reads. The
-    values therefore keep their colours across calls, and agree with figures drawn by
-    :func:`scanpy.pl.embedding` or :func:`muon.pl.embedding` directly. Colours already
-    recorded there are used as they are. This annotates the object that is passed.
-
-    No colour map is imposed. When ``cmap`` is not given, the matplotlib default applies, so
-    a colour map set globally through :func:`scanpy.set_figure_params` is respected.
-
-    ``save`` writes to ``figures/<basis><save>``, as in :func:`scanpy.pl.embedding`.
 
     Examples
     --------
@@ -151,8 +145,7 @@ def trends(
         Whether to show the figure. When ``None`` the figure is shown unless something is
         being returned.
     save
-        Filename to save the figure under, in ``figures/``. Honoured whether or not anything
-        is returned.
+        Filename to save the figure under, in ``figures/``.
 
     Returns
     -------
@@ -284,6 +277,14 @@ def fate_probabilities(
     save: str | None = None,
     **kwargs,
 ) -> Axes | None:
+    # This function is adapted from CellRank (BSD 3-Clause License).
+    # Original source: https://github.com/scverse/cellrank
+    # Copyright (c) 2019, Theis Lab
+    # Modifications:
+    # - Does not use the Lineage class
+    # - Only focuses on plotting fate probabilities and not time.
+    # - Uses original scvelo plot function with custom cmap to plot fate probabilities
+    # - Controls for singleton and nans
     """Plot fate probabilities on an embedding, blending each cell's two most likely fates.
 
     This function exploits :func:`scvelo.pl.scatter`.
@@ -305,7 +306,7 @@ def fate_probabilities(
     show
         Whether to show the figure, as in :func:`scvelo.pl.scatter`.
     save
-        Filename to save to, as in :func:`scvelo.pl.scatter`.
+        Filename to save the figure under, in ``figures/``, following as in :func:`scvelo.pl.scatter`.
     **kwargs
         Additional keyword arguments passed to :func:`scvelo.pl.scatter`.
 
@@ -397,3 +398,348 @@ def fate_probabilities(
         title=title or "",
         **kwargs,
     )
+
+
+def _tree_root(mudata: MuData, tree: AnnData, root: str | None) -> int:
+    """The principal node the tree runs away from, from the state the object records as initial.
+
+    The choice decides which fate reads as the origin and which read as outcomes
+    It is therefore never guessed.
+    """
+    from atlas.tl.utils import _states_mapping
+
+    states = _states_mapping(mudata, "initial_states")
+
+    if not states:
+        raise KeyError(f"mudata records no initial state. Run {_TIME_PRODUCER} to compute one")
+
+    if root is None:
+        if len(states) > 1:
+            available = ", ".join(sorted(states))
+            raise ValueError(
+                f"mudata records more than one initial state ({available}); pass `root` naming "
+                f"the one to anchor the tree. The choice decides which fate reads as the origin "
+                f"and which read as outcomes"
+            )
+        root = next(iter(states))
+    elif root not in states:
+        available = ", ".join(sorted(states)) or "none"
+        raise KeyError(
+            f"'{root}' is not among the recorded initial states ({available}); "
+            f"`root` names the state that anchors the tree, not one to create"
+        )
+
+    cells = list(states[root])
+    positions = tree.obs_names.get_indexer(cells)
+    if (positions < 0).any():
+        # `get_indexer` reports -1 for a label it cannot find, and -1 indexes the last row.
+        missing = [cell for cell, position in zip(cells, positions, strict=True) if position < 0]
+        raise KeyError(
+            f"initial state '{root}' names {len(missing)} cell(s) mudata no longer holds "
+            f"({', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}); an object subset "
+            f"since its states were recorded is a different object"
+        )
+
+    return int(tree.obsm["X_R"][positions, :].mean(axis=0).argmax())
+
+
+def _reject_unfittable(probabilities: pd.DataFrame, key: str) -> None:
+    values = probabilities.to_numpy(dtype=float)
+    names = [str(name) for name in probabilities.columns]
+
+    def _named(mask_by_fate) -> str:
+        return ", ".join(name for name, hit in zip(names, mask_by_fate, strict=True) if hit)
+
+    unfinite = ~np.isfinite(values)
+    if unfinite.any():
+        raise ValueError(
+            f"mudata.obsm['{key}'] holds values that are not finite for {_named(unfinite.any(axis=0))} "
+            f"({int(unfinite.any(axis=1).sum())} cell(s)); the structure is fitted on the fates "
+            f"normalised by their averages, which carries one such value into every cell, so what "
+            f"would be fitted is not the recorded probabilities"
+        )
+
+    negative = values < 0
+    if negative.any():
+        raise ValueError(
+            f"mudata.obsm['{key}'] holds negative probabilities for {_named(negative.any(axis=0))} "
+            f"({int(negative.any(axis=1).sum())} cell(s)); a fate probability is the share of a "
+            f"cell heading towards that fate and has no reading below zero"
+        )
+
+    # Checked after the sign, a column being able to sum to zero by cancellation otherwise.
+    dead = values.sum(axis=0) <= 0
+    if dead.any():
+        raise ValueError(
+            f"mudata.obsm['{key}'] records {_named(dead)} with zero probability for every cell; "
+            f"the fates are placed around a circle and each is divided by its average, so a fate "
+            f"no cell heads towards has no position to hold. Recompute the probabilities, or "
+            f"record only the fates cells head towards"
+        )
+
+
+def _fit_tree(
+    mudata: MuData,
+    probabilities: pd.DataFrame,
+    basis: str,
+    time_key: str,
+    root: str | None,
+    nodes: int,
+    method: str,
+    ppt_lambda: int,
+    random_state: int,
+    tree_kwargs: dict,
+) -> AnnData:
+    """Fit the principal tree over the fate probabilities, on a throwaway object.
+
+    `scFates` cannot consume a ``MuData``, and everything it computes lands on the object it is
+    handed; that object is what `return_tree` gives back rather than something discarded.
+    """
+    import scFates as scf
+
+    names = [str(name) for name in probabilities.columns]
+    colors = _state_colors(mudata, "terminal_states")
+    palette = [colors.get(name, _DEFAULT_LINEAGE_COLOR) for name in names]
+
+    embedding_key = basis if basis in mudata.obsm else f"X_{basis}"
+    tree = AnnData(X=np.zeros((mudata.n_obs, 1)), obs=mudata.obs.copy())
+    tree.obsm[f"X_{basis}"] = np.asarray(mudata.obsm[embedding_key])
+
+    tree.obsm[_LINEAGE_KEY] = probabilities.to_numpy(dtype=np.float64)
+    tree.obs[_STATES_KEY] = pd.Categorical(np.asarray(names)[probabilities.to_numpy().argmax(axis=1)], categories=names)
+    tree.uns[f"{_STATES_KEY}_colors"] = palette
+
+    scf.tl.cellrank_to_tree(
+        adata=tree,
+        time=time_key,
+        Nodes=nodes,
+        method=method,
+        ppt_lambda=ppt_lambda,
+        auto_root=False,
+        reassign_pseudotime=False,
+        key_cellrank=_LINEAGE_KEY,
+        copy=False,
+        seed=random_state,
+        **tree_kwargs,
+    )
+
+    scf.tl.root(tree, _tree_root(mudata, tree, root))
+    scf.tl.pseudotime(tree, seed=random_state, copy=False)
+    scf.tl.dendrogram(tree)
+    # `scFates.tl.dendrogram` opens a figure when none is current. Closing it here
+    plt.close()
+
+    return tree
+
+
+def fate_tree(
+    mudata: MuData,
+    *,
+    basis: str = "umap",
+    fate_probability_key: str = "fate_probabilities",
+    time_key: str = "pseudotime",
+    root: str | None = None,
+    color: str | None = None,
+    nodes: int = 300,
+    method: Literal["ppt", "epg"] = "ppt",
+    ppt_lambda: int = 100,
+    tree: AnnData | None = None,
+    return_tree: bool = False,
+    ax: Sequence[Axes] | None = None,
+    figsize: tuple[float, float] | None = None,
+    show: bool | None = None,
+    save: str | None = None,
+    random_state: int = 42,
+    tree_kwargs: dict | None = None,
+    graph_kwargs: dict | None = None,
+    dendrogram_kwargs: dict | None = None,
+) -> list[Axes] | AnnData:
+    # This function adapts a tutorial from scFates (BSD 3-Clause).
+    # Original source: https://scfates.readthedocs.io/en/latest/Conversion_from_CellRank_pipeline.html
+    # Copyright (c) 2020, LouisFaure
+    # Modifications:
+    # - Adapted the code to MuData object resulting from ATLAS
+    # - Constructs instance of the Lineage class from CellRank to run tree inference
+    """Plot the branching structure implied by fate probabilities, using :cite:`scfates`.
+
+    A principal tree is fitted over the fate probabilities and return on a single visualization
+    the projected tree onto an embedding, and as a dendrogram.
+
+    Parameters
+    ----------
+    mudata
+        Multimodal annotated data object carrying fate probabilities, a pseudotime and an
+        embedding.
+    basis
+        Name of the embedding in ``mudata.obsm``, with or without the ``X_`` prefix under which
+        embeddings are stored.
+    fate_probability_key
+        Key in ``mudata.obsm`` holding the probabilities. Its columns name the fates.
+    time_key
+        Column of ``mudata.obs`` holding the pseudotime the tree is fitted against.
+    root
+        Which recorded initial state anchors the tree. When the object records one it is used
+        and this may be left unset; when it records several, one must be named.
+    color
+        Column of ``mudata.obs`` the cells are coloured by, in both views.
+    nodes
+        Number of nodes composing the principal tree.
+    method
+        Tree inference method, one of ``{'ppt', 'epg'}``.
+    ppt_lambda
+        Penalty on tree length, for ``method='ppt'``.
+    tree
+        A tree returned earlier by ``return_tree``. When given, it is drawn as it is and nothing
+        is fitted. It must have been fitted on the cells ``mudata`` currently holds.
+    return_tree
+        Whether to return the fitted tree instead of the axes.
+    ax
+        The two axes to draw into, in order: the embedding, then the dendrogram. When given, no
+        figure is created.
+    figsize
+        Size of the figure, when one is created.
+    show
+        Whether to show the figure. Defaults to showing it unless ``return_tree`` is set.
+    save
+        Filename to save the figure under, in ``figures/``.
+    random_state
+        Seed for the fit.
+    tree_kwargs
+        Additional keyword arguments for :func:`scFates.tl.tree`, including the ``epg_*``
+        parameters when ``method='epg'``.
+    graph_kwargs
+        Additional keyword arguments for :func:`scFates.pl.graph`.
+    dendrogram_kwargs
+        Additional keyword arguments for :func:`scFates.pl.dendrogram`.
+
+    Returns
+    -------
+    The two axes drawn on, or the fitted tree when ``return_tree`` is set. What that tree
+    carries is described under Notes.
+
+    Raises
+    ------
+    KeyError
+        If ``basis``, ``fate_probability_key``, ``time_key`` or ``color`` names nothing the
+        object records, if ``root`` names no recorded initial state, or if an initial state
+        names cells the object no longer holds.
+    ValueError
+        If fewer than two fates are recorded, if several initial states are recorded and none
+        is named, if ``ax`` is not exactly two axes, or if ``tree`` was fitted on other cells.
+        If any recorded probability is not finite or is negative, or if a recorded fate carries
+        zero probability for every cell — see Notes.
+
+    Notes
+    -----
+    Below three fates the representation is ``[P(fate₀), pseudotime]`` and is exact,
+    one probability determining the other. At three or more it is the circular
+    projection of :func:`cellrank.pl.circular_projection` stacked with pseudotime, which
+    collapses ``n-1`` dimensions onto two.
+
+    The tree is handed back exactly as the fit left it; nothing is removed from it. Alongside
+    what :mod:`scFates` records, it carries the keys the projection reads and writes, which
+    belong to :mod:`cellrank`:
+
+    - ``.obsm['lineages_fwd']``, the fate probabilities the tree was fitted from. A plain
+      array.
+    - ``.obsm['X_fate_simplex_fwd']``, the circular projection, which is ``.obsm['X_fates']``
+      without its pseudotime column.
+    - ``.obs['term_states_fwd']`` and ``.uns['term_states_fwd_colors']``, naming and colouring
+      the fates for the projection.
+    - ``.obs['lineages_fwd_kl_divergence']``, which restates ``.obs['kl_divergence']`` as
+      computed by :func:`atlas.tl.compute_entropy`.
+
+    Examples
+    --------
+    >>> atlas.pl.fate_tree(mudata, color="celltype")
+    >>> fitted = atlas.pl.fate_tree(mudata, return_tree=True)
+    >>> atlas.pl.fate_tree(mudata, tree=fitted, color="leiden")
+    """
+    import scFates as scf
+
+    _resolve_basis(mudata, basis)
+    probabilities = _fate_frame(mudata, fate_probability_key).loc[mudata.obs_names]
+
+    if probabilities.shape[1] < 2:
+        raise ValueError(
+            f"mudata.obsm['{fate_probability_key}'] records {probabilities.shape[1]} fate(s); a "
+            f"branching structure needs at least two fates to run between"
+        )
+
+    _reject_unfittable(probabilities, fate_probability_key)
+
+    if time_key not in mudata.obs.columns:
+        raise KeyError(
+            f"'{time_key}' not in mudata.obs; run {_TIME_PRODUCER} to compute a pseudotime, "
+            f"or pass `time_key` naming the column holding one"
+        )
+
+    if color is not None and color not in mudata.obs.columns:
+        raise KeyError(f"'{color}' not in mudata.obs, which is what `color` names for this figure")
+
+    if tree is None:
+        tree = _fit_tree(
+            mudata,
+            probabilities,
+            basis,
+            time_key,
+            root,
+            nodes,
+            method,
+            ppt_lambda,
+            random_state,
+            dict(tree_kwargs or {}),
+        )
+    else:
+        if not tree.obs_names.equals(mudata.obs_names):
+            raise ValueError(
+                f"`tree` was fitted on {tree.n_obs} cell(s) and mudata holds {mudata.n_obs}, "
+                f"which are not the same cells; refit the tree on this object rather than "
+                f"drawing cells it no longer holds"
+            )
+        if color is not None and color not in _TREE_COLUMNS:
+            tree.obs[color] = mudata.obs[color]
+
+    if ax is None:
+        fig, axes = plt.subplots(1, 2, figsize=figsize or (12, 5))
+        axes = list(axes)
+    else:
+        axes = list(ax)
+        if len(axes) != 2:
+            raise ValueError(
+                f"`ax` takes the two axes to draw into — the embedding, then the dendrogram — and {len(axes)} was given"
+            )
+        fig = axes[0].figure
+
+    graph_kwargs, dendrogram_kwargs = dict(graph_kwargs or {}), dict(dendrogram_kwargs or {})
+    categorical = color is not None and isinstance(mudata.obs[color].dtype, pd.CategoricalDtype)
+
+    graph_kwargs.setdefault("color_cells", color)
+    dendrogram_kwargs.setdefault("color", color)
+
+    graph_kwargs.setdefault("legend_loc", "none" if categorical else None)
+    graph_kwargs.setdefault("colorbar_loc", None)
+
+    scf.pl.graph(tree, basis=basis, ax=axes[0], show=False, **graph_kwargs)
+    scf.pl.dendrogram(tree, ax=axes[1], show=False, **dendrogram_kwargs)
+
+    if categorical:
+        handles, labels = axes[1].get_legend_handles_labels()
+        if axes[1].get_legend() is not None:
+            axes[1].get_legend().remove()
+        if handles:
+            fig.legend(handles, labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+
+    fig.tight_layout()
+
+    if save is not None:
+        figure_path = os.path.join(os.getcwd(), "figures")
+        os.makedirs(figure_path, exist_ok=True)
+        fig.savefig(os.path.join(figure_path, f"fate_tree_{save}.png"), bbox_inches="tight", dpi=300)
+
+    if show is None:
+        show = not return_tree
+    if show:
+        plt.show()
+
+    return tree if return_tree else axes

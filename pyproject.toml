@@ -36,7 +36,7 @@ dependencies = [
   "pandas>=1.5,<3",
   "pygam",
   "scanpy>=1.9",
-  "scfates",
+  "scfates>=1.2",
   "scvelo>0.3",
   # for debug logging (referenced from the issue template)
   "session-info2",

@@ -29,9 +29,7 @@ def plot_embedding(
        This function is deprecated and will be removed in version 2.0.0.
        It is retained in version 1.1.0 for backwards compatibility.
 
-       It is superseded by :func:`~atlas.pl.embedding`, which draws the ``MuData``
-       directly, resolves any stored embedding, colors by observations or by features
-       of any modality, draws several keys in one call, and returns its axes.
+       It is superseded by :func:`~atlas.pl.embedding`.
 
     Parameters
     ----------
@@ -70,9 +68,7 @@ def plot_embedding(
         stacklevel=2,
     )
 
-    # Loaded after the warning, not before it: importing scvelo installs eleven warning
-    # filters, which would swallow the FutureWarning raised above.
-    import scvelo as scv  # at the point of use, not on `import atlas`
+    import scvelo as scv
 
     if observation not in mudata.obs.columns:
         warnings.warn(f"WARNING: {observation} not a valid cell metadata", stacklevel=2)
@@ -160,10 +156,8 @@ def plot_fate_probabilities(
         stacklevel=2,
     )
 
-    # Loaded after the warning, not before it: importing scvelo installs eleven warning
-    # filters, which would swallow the FutureWarning raised above.
-    import scvelo as scv  # at the point of use, not on `import atlas`
-    from cellrank._utils._lineage import Lineage  # at the point of use, not on `import atlas`
+    import scvelo as scv
+    from cellrank._utils._lineage import Lineage
 
     if fate_probability_key not in mudata.obsm.keys():
         warnings.warn("WARNING: fate probabilities are not available; Try recompute them.", stacklevel=2)
@@ -254,8 +248,7 @@ def plot_trends(
        This function is deprecated and will be removed in version 2.0.0.
        It is retained in version 1.1.0 for backwards compatibility.
 
-       It is superseded by :func:`~atlas.pl.trends`. The fitting procedure this
-       function uses will be removed with it.
+       It is superseded by :func:`~atlas.pl.trends`.
 
     Parameters
     ----------
@@ -386,6 +379,12 @@ def plot_tree(
     """
     Compute and visualize a principal tree from fate probabilities, using :cite:`scfates`.
 
+    .. deprecated:: 1.1.0
+       This function is deprecated and will be removed in version 2.0.0.
+       It is retained in version 1.1.0 for backwards compatibility.
+
+       It is superseded by :func:`~atlas.pl.fate_tree`.
+
     Parameters
     ----------
     mudata
@@ -435,8 +434,15 @@ def plot_tree(
     -----
     Requires precomputed fate probabilities with at least 2 terminal states.
     """
-    import scFates as scf  # at the point of use, not on `import atlas`
-    from cellrank._utils._lineage import Lineage  # at the point of use, not on `import atlas`
+    warnings.warn(
+        "`plot_tree` is deprecated since version 1.1.0 and will be "
+        "removed in version 2.0.0. Use `atlas.pl.fate_tree` instead.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+    import scFates as scf
+    from cellrank._utils._lineage import Lineage
 
     if root_params is None:
         root_params = {}
