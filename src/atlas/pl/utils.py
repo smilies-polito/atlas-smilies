@@ -1,5 +1,6 @@
 import warnings
 from collections.abc import Mapping, Sequence
+from types import ModuleType
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,24 @@ from atlas.tl.utils import _KEY_REMOVAL_VERSION, _LEGACY_PALETTE_KEY
 
 _FATE_PRODUCER = "`atlas.tl.CellRankExtension.compute_fate_probabilities`"
 _EMBEDDING_PRODUCER = "`atlas.tl.umap`"
+
+_TREES_EXTRA_MESSAGE = (
+    "{entry_point} needs scFates, which ATLAS does not install by default:\n"
+    "\n"
+    "    pip install atlas-smilies[trees]\n"
+    "\n"
+    "scFates is an optional extra because it requires scikit-misc, which has no prebuilt "
+    "wheel for every platform ATLAS supports. Keeping it optional lets ATLAS install "
+    "without a compiler where that wheel is unavailable."
+)
+
+
+def _require_scfates(entry_point: str) -> ModuleType:
+    try:
+        import scFates
+    except ImportError:
+        raise ImportError(_TREES_EXTRA_MESSAGE.format(entry_point=entry_point)) from None
+    return scFates
 
 
 def _weighted_quantile(x: np.ndarray, w: np.ndarray, q: float) -> float:

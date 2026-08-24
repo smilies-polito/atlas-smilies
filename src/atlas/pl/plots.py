@@ -8,7 +8,7 @@ import numpy as np
 from anndata import AnnData
 from muon import MuData
 
-from .utils import MultiBranchGAM
+from .utils import MultiBranchGAM, _require_scfates
 
 
 def plot_embedding(
@@ -441,7 +441,7 @@ def plot_tree(
         stacklevel=2,
     )
 
-    import scFates as scf
+    scf = _require_scfates("`atlas.pl.plot_tree`")
     from cellrank._utils._lineage import Lineage
 
     if root_params is None:

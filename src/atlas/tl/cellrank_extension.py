@@ -229,7 +229,9 @@ class CellRankExtension:
         initial_distribution
             Optional initial distribution over cells used for the Schur decomposition.
         method
-            Method used to compute the Schur decomposition.
+            Method used to compute the Schur decomposition. ``"krylov"`` requires
+            :mod:`petsc4py` and :mod:`slepc4py`, which ATLAS does not install; without them
+            CellRank falls back to ``"brandts"``, which requires a dense transition matrix.
         sorting_strategy
             Strategy to sort eigenvalues (e.g. largest magnitude ``"LM"`` or largest real part ``"LR"``).
         eigengap_weight
@@ -258,6 +260,8 @@ class CellRankExtension:
             Linear solver used for fate probability computation.
         use_petsc
             Whether to use :mod:`petsc4py` or :mod:`scipy` for solving linear systems.
+            PETSc must be obtained separately; without it CellRank falls back to SciPy.
+            Under the default ``solver="gmres"`` that fallback stays sparse.
         n_jobs
             Number of parallel jobs for the iterative solver.
         tol
@@ -301,6 +305,18 @@ class CellRankExtension:
         -----
         This implementation relies on :class:`cellrank.estimators.GPCCA` to perform
         coarse-graining of the Markov chain and infer lineage relationships.
+
+        Optional PETSc acceleration. Two parameters can draw on :mod:`petsc4py` and
+        :mod:`slepc4py`, which ATLAS does not install.
+
+        The two parameters degrade differently when the solver is absent, and only one of
+        them costs anything:
+
+        - ``method="krylov"`` needs the solver. Without it CellRank uses ``"brandts"``,
+          which requires a dense transition matrix.
+        - ``use_petsc=True`` does not need it. CellRank falls back to SciPy, and under the
+          default ``solver="gmres"`` that route is sparse, so the result and the memory
+          profile are unchanged.
 
         If both ``initial_states`` and ``terminal_states`` are provided, no automatic
         state inference is performed. Otherwise, macrostates and lineage-driving states

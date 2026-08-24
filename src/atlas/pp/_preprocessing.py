@@ -108,6 +108,14 @@ def compute_gene_activity(
         If ``atac_key`` is not a modality of ``mudata``.
     ValueError
         If the fragment file cannot be located, or ``features`` is not provided.
+    ImportError
+        If :mod:`pysam` is not installed. The error is raised by :mod:`muon` and carries
+        its own installation instructions; see Notes.
+
+    Notes
+    -----
+    Reading the fragment file requires :mod:`pysam`, which neither ATLAS nor :mod:`muon`
+    installs by default.
 
     """
     data = mudata.copy() if copy else mudata

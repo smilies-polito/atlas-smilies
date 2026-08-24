@@ -35,10 +35,33 @@ in particular, the [API documentation][].
 
 ## Installation
 
-To install ATLAS plase use:
+To install ATLAS please use:
 ```bash
 pip install atlas-smilies
 ```
+
+### Optional components
+
+Three features draw on packages ATLAS does not install. Everything else works without them.
+
+**Fate tree figures** need [scFates][], available as an extra:
+```bash
+pip install atlas-smilies[trees]
+```
+Keeping it separate lets ATLAS install without a compiler where
+that wheel is unavailable.
+
+**Gene activity from scATAC-seq** (`atlas.pp.compute_gene_activity`) needs `pysam` to read
+the fragment file.
+
+**Faster trajectory inference.** `atlas.tl.CellRankExtension.run` defaults to
+`method="krylov"`, which needs `petsc4py` and `slepc4py`.
+
+Without them CellRank falls back to `method="brandts"`, which requires a dense
+transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
+
+[scFates]: https://scfates.readthedocs.io/
+[muon]: https://muon.readthedocs.io/
 
 ## Release notes
 

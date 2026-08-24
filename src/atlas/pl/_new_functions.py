@@ -15,7 +15,7 @@ from muon import MuData
 
 from atlas.tl import MultiLineageGAM
 
-from .utils import _fate_frame, _resolve_basis, _resolve_color, _state_colors
+from .utils import _fate_frame, _require_scfates, _resolve_basis, _resolve_color, _state_colors
 
 _DEFAULT_LINEAGE_COLOR = "grey"
 _UNDECIDED_COLOR = "lightgrey"
@@ -495,7 +495,7 @@ def _fit_tree(
     `scFates` cannot consume a ``MuData``, and everything it computes lands on the object it is
     handed; that object is what `return_tree` gives back rather than something discarded.
     """
-    import scFates as scf
+    scf = _require_scfates("`atlas.pl.fate_tree`")
 
     names = [str(name) for name in probabilities.columns]
     colors = _state_colors(mudata, "terminal_states")
@@ -655,7 +655,7 @@ def fate_tree(
     >>> fitted = atlas.pl.fate_tree(mudata, return_tree=True)
     >>> atlas.pl.fate_tree(mudata, tree=fitted, color="leiden")
     """
-    import scFates as scf
+    scf = _require_scfates("`atlas.pl.fate_tree`")
 
     _resolve_basis(mudata, basis)
     probabilities = _fate_frame(mudata, fate_probability_key).loc[mudata.obs_names]

@@ -29,6 +29,7 @@ dynamic = [ "version" ]
 dependencies = [
   "anndata>=0.10",
   "cellrank>=2",
+  "matplotlib>=3.9",
   "mudata>=0.3",
   "muon>=0.1",
   "numpy>=1.23",
@@ -36,11 +37,12 @@ dependencies = [
   "pandas>=1.5,<3",
   "pygam",
   "scanpy>=1.9",
-  "scfates>=1.2",
+  "scipy>=1.13",
   "scvelo>0.3",
   # for debug logging (referenced from the issue template)
   "session-info2",
 ]
+optional-dependencies.trees = [ "scfates>=1.2" ]
 # https://docs.pypi.org/project_metadata/#project-urls
 urls.Documentation = "https://atlas-smilies.readthedocs.io/"
 urls.Homepage = "https://github.com/smilies-polito/atlas-smilies"
@@ -79,6 +81,8 @@ envs.docs.scripts.build = "sphinx-build -M html docs docs/_build -W {args}"
 envs.docs.scripts.open = "python -m webbrowser -t docs/_build/html/index.html"
 envs.docs.scripts.clean = "git clean -fdX -- {args:docs}"
 envs.hatch-test.dependency-groups = [ "dev", "test" ]
+# `dependency-groups` does not install extras; the tree tests need scFates from `trees`.
+envs.hatch-test.features = [ "trees" ]
 envs.hatch-test.matrix = [
   # Test the lowest and highest supported Python versions with normal deps
   { deps = [ "stable" ], python = [ "3.11", "3.12", "3.13", "3.14" ] },
