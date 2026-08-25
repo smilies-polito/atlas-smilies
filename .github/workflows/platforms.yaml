@@ -48,6 +48,11 @@ jobs:
   # Installs with pip, not uv: pip is what the README instructs and what decides the
   # versions a user actually receives. Each entry names the Python explicitly, since
   # which interpreter runs decides which dependency world is installed.
+  #
+  # `expect` mirrors the [[smoke]] table in platform-support.toml. A job whose install
+  # is expected to fail asserts that failure rather than going red — and fails if the
+  # install unexpectedly succeeds, so a limitation that has been lifted is reported
+  # rather than absorbed.
   smoke:
     name: Install and import (${{ matrix.name }}, py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
@@ -57,22 +62,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]" }
-          - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]" }
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]", expect: succeeds }
           # ARM Linux installs core only: scikit-misc has no aarch64 wheel, so the
           # trees extra would compile Fortran on every run. The record expects that,
           # and the resolution job verifies it without paying for it.
-          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "" }
-          - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]" }
-          - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]" }
-          # Intel macOS runs 3.11 and 3.13 — two genuinely different combinations.
-          # jaxlib pins to 0.4.38 on both, but 3.11 pairs it with cellrank 2.0.7 and
-          # 3.13 with 2.3.2, and neither result can be inferred from the other.
-          # 3.14 is absent because the record expects it not to resolve.
-          - { name: macOS x86_64, os: macos-15-intel, python: "3.11", extras: "[trees]" }
-          - { name: macOS x86_64, os: macos-15-intel, python: "3.13", extras: "[trees]" }
-          - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]" }
-          - { name: Windows x86_64, os: windows-latest, python: "3.14", extras: "[trees]" }
+          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "", expect: succeeds }
+          - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]", expect: succeeds }
+          # Intel macOS is expected to FAIL: pip selects numba 0.67.0 from source and
+          # then cannot build its llvmlite 0.49.0, which needs a prebuilt LLVM. Both
+          # Pythons are kept because they are different combinations — 3.11 pairs the
+          # pinned old jaxlib with cellrank 2.0.7, 3.13 with 2.3.2 — and because the
+          # platform stays under observation rather than being dropped.
+          # 3.14 is absent because the record expects it not to resolve at all.
+          - { name: macOS x86_64, os: macos-15-intel, python: "3.11", extras: "[trees]", expect: fails }
+          - { name: macOS x86_64, os: macos-15-intel, python: "3.13", extras: "[trees]", expect: fails }
+          - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: Windows x86_64, os: windows-latest, python: "3.14", extras: "[trees]", expect: succeeds }
     steps:
       - uses: actions/checkout@v6
         with:
@@ -88,14 +95,37 @@ jobs:
           python -m pip install --upgrade pip
         shell: bash
       - name: pip install .${{ matrix.extras }}
+        id: install
+        # The step's real result is kept in steps.install.outcome; the comparison below
+        # decides whether that result is the one the record expects.
+        continue-on-error: true
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then . .smoke/Scripts/activate; else . .smoke/bin/activate; fi
           python -m pip install ".${{ matrix.extras }}"
           python -m pip list
         shell: bash
+
+      - name: Compare install outcome with the record
+        run: |
+          actual='${{ steps.install.outcome }}'   # success | failure
+          case "${{ matrix.expect }}:$actual" in
+            succeeds:success)
+              echo "Installed, as the record expects." ;;
+            fails:failure)
+              echo "Install failed, as platform-support.toml records for this platform." ;;
+            succeeds:failure)
+              echo "::error::Install failed, but the record expects it to succeed. Either a dependency stopped publishing a wheel for this platform, or the record is wrong."
+              exit 1 ;;
+            fails:success)
+              echo "::error::Install SUCCEEDED, but the record expects it to fail. The limitation has been lifted — update platform-support.toml and the README, which currently understate what works."
+              exit 1 ;;
+          esac
+        shell: bash
       # Importing the top-level package alone would not notice a broken dependency
       # behind a submodule, so each subpackage is imported explicitly.
       - name: Import the package
+        # Skipped where the install is expected to fail; there is nothing to import.
+        if: matrix.expect == 'succeeds'
         env:
           MPLBACKEND: agg
         run: |

@@ -4,40 +4,38 @@
 # supports. The README, the classifiers in pyproject.toml, and the verification job
 # in .github/workflows/platforms.yaml all read from it.
 #
-# It is a record of expectations, not a wish list. `scripts/check_platform_support.py`
+# It is a record of expectations. `scripts/check_platform_support.py`
 # resolves every entry below and fails when reality differs from what is recorded —
-# in either direction. An entry expected to fail that starts succeeding is a defect in
-# this file, not an improvement to be absorbed silently.
+# in either direction.
 #
 # Outcome vocabulary (three values, deliberately not a boolean):
 #
-#   wheel-complete    a solution exists and installs from wheels alone
+#   wheel-complete    a wheel-only solution EXISTS for this combination
 #   requires-build    a solution exists, but installing it compiles a package
 #                     from source, so a build toolchain is needed
 #   does-not-resolve  no consistent version set exists for this combination
+#
+# `wheel-complete` says a wheel-only solution exists. It does NOT say that `pip
+# install` finds it. pip accepts a source distribution as a valid candidate and
+# backtracks only on constraint conflicts, never on a missing wheel — so it can
+# settle on an sdist and discover at build time that it cannot be built, while a
+# wheel-only solution sat one version lower the whole time. What a user actually
+# gets is recorded separately, in the [[smoke]] table below.
 #
 # Verification depth, recorded per platform, and never overstated in documentation:
 #
 #   resolution          only resolved and wheel-checked; no machine has run it
 #   install-and-import  installed and imported on a runner of this platform
 #   tested              the test suite runs on this platform
+#   install-fails       an installation was attempted here and does not succeed
 #   unverified          not yet executed anywhere; do not claim support
 #
-# A depth is promoted only by an observed run. Until the jobs in platforms.yaml have
-# reported, every platform but Linux x86_64 stays `unverified`, however confidently
-# its resolution succeeds — resolving is not running.
+# A depth is promoted only by an observed run — resolving is not running.
 
 schema-version = 1
 
-# Source distributions with no wheels on any platform at any version, which are
-# nevertheless pure Python and build anywhere without a compiler. The wheel check
-# permits exactly these and no others: a new sdist-only dependency must be added
-# here deliberately, after someone confirms it needs no build toolchain.
 pure-python-sdists = [ "docrep", "loompy" ]
 
-# The dependency set has two worlds, separated by cellrank 2.1.0's `requires-python
-# >=3.12`. Which world an installation lands in is decided by the user's interpreter,
-# because pip resolves against the running Python alone.
 [dependency-worlds.older]
 pythons = [ "3.11" ]
 cellrank = "2.0.7"
@@ -54,10 +52,6 @@ scanpy = "1.12.3"
 numpy = "2.5.2"
 anndata = "0.13.2"
 
-# macOS x86_64 belongs to whichever world its Python selects, except for jax: no
-# jaxlib newer than 0.4.38 ships a macOS x86_64 wheel, so every resolution there pins
-# a December 2024 JAX. On 3.12 and 3.13 that is paired with cellrank 2.3.2 and numpy
-# 2.5.2 — a combination that exists on no other platform.
 [dependency-worlds.macos-x86_64-exception]
 jax = "0.4.38"
 pythons = [ "3.11", "3.12", "3.13" ]
@@ -82,10 +76,7 @@ entries = [
 tag = "aarch64-unknown-linux-gnu"
 name = "Linux aarch64"
 runner = "ubuntu-24.04-arm"
-verified = "unverified"
-# The core install is wheel-clean here. The `trees` extra is not: scikit-misc
-# publishes manylinux x86_64, both macOS arches and win_amd64, but no aarch64 wheel
-# at any version ATLAS can use. This is the cost the extra was accepted for.
+verified = "install-and-import"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
   { python = "3.11", shape = "trees", expected = "requires-build", blame = "scikit-misc" },
@@ -101,7 +92,7 @@ entries = [
 tag = "aarch64-apple-darwin"
 name = "macOS arm64"
 runner = "macos-latest"
-verified = "unverified"
+verified = "tested"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
   { python = "3.11", shape = "trees", expected = "wheel-complete" },
@@ -117,15 +108,7 @@ entries = [
 tag = "x86_64-apple-darwin"
 name = "macOS x86_64"
 runner = "macos-15-intel"
-# Resolution says 3.11 through 3.13 install from wheels here. Nothing has ever
-# imported the result, and what it resolves to is unusual enough that resolution is
-# not evidence it runs: see dependency-worlds.macos-x86_64-exception. Until the
-# smoke job reports, this platform is claimed nowhere.
-verified = "unverified"
-# 3.14 fails because no jaxlib new enough for cp314 ships a macOS x86_64 wheel, and
-# the chain that requires it is palantir -> mellon -> jaxopt -> jaxlib. This is the
-# documented limitation working as intended; it is recorded, not omitted, so that it
-# is re-examined when jaxlib changes.
+verified = "install-fails"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
   { python = "3.11", shape = "trees", expected = "wheel-complete" },
@@ -141,7 +124,7 @@ entries = [
 tag = "x86_64-pc-windows-msvc"
 name = "Windows x86_64"
 runner = "windows-latest"
-verified = "unverified"
+verified = "tested"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
   { python = "3.11", shape = "trees", expected = "wheel-complete" },
@@ -152,3 +135,35 @@ entries = [
   { python = "3.14", shape = "core", expected = "wheel-complete" },
   { python = "3.14", shape = "trees", expected = "wheel-complete" },
 ]
+
+[[smoke]]
+platform = "x86_64-unknown-linux-gnu"
+pythons = [ "3.11", "3.14" ]
+shape = "trees"
+expected = "succeeds"
+
+[[smoke]]
+platform = "aarch64-unknown-linux-gnu"
+pythons = [ "3.14" ]
+shape = "core"
+expected = "succeeds"
+
+[[smoke]]
+platform = "aarch64-apple-darwin"
+pythons = [ "3.11", "3.14" ]
+shape = "trees"
+expected = "succeeds"
+
+[[smoke]]
+platform = "x86_64-apple-darwin"
+pythons = [ "3.11", "3.13" ]
+shape = "trees"
+expected = "fails"
+blame = "llvmlite"
+reason = "pip selects numba 0.67.0 from source; its llvmlite 0.49.0 needs a prebuilt LLVM"
+
+[[smoke]]
+platform = "x86_64-pc-windows-msvc"
+pythons = [ "3.11", "3.14" ]
+shape = "trees"
+expected = "succeeds"
