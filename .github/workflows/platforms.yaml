@@ -136,6 +136,181 @@ jobs:
           "
         shell: bash
 
+  # ── Does it work when conda provides the environment? ─────────────────────────
+  # The same route as `smoke` — pip resolves everything from PyPI — performed inside
+  # a clean conda environment rather than a venv. The installation instruction offers
+  # both, so both are claimed on every supported platform and both are verified.
+  #
+  # These entries match their `smoke` counterparts exactly, so a difference between
+  # the two jobs is attributable to the environment provider and to nothing else.
+  # Intel macOS is absent here because the route job below covers the same
+  # combination as its first step, asserting that it fails there.
+  smoke-conda:
+    name: Install and import, conda env (${{ matrix.name }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]", expect: succeeds }
+          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "", expect: succeeds }
+          - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]", expect: succeeds }
+          - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]", expect: succeeds }
+          - { name: Windows x86_64, os: windows-latest, python: "3.14", extras: "[trees]", expect: succeeds }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      # micromamba rather than Miniconda or Miniforge: one static binary, no base
+      # environment to create and no shell initialisation to arrange, which keeps the
+      # job's failure modes close to the thing being tested.
+      - name: Set up micromamba with Python ${{ matrix.python }}
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: atlas
+          create-args: python=${{ matrix.python }} pip
+          init-shell: bash
+          cache-environment: false
+      # The environment holds the interpreter and nothing else. This job tests conda
+      # as an ENVIRONMENT provider; the dependency provider is still pip.
+      - name: pip install .${{ matrix.extras }}
+        id: install
+        continue-on-error: true
+        shell: bash -el {0}
+        run: |
+          micromamba list
+          python -m pip install ".${{ matrix.extras }}"
+          python -m pip list
+
+      - name: Compare install outcome with the record
+        shell: bash -el {0}
+        run: |
+          actual='${{ steps.install.outcome }}'
+          case "${{ matrix.expect }}:$actual" in
+            succeeds:success)
+              echo "Installed in a conda environment, as the record expects." ;;
+            fails:failure)
+              echo "Install failed, as platform-support.toml records for this platform." ;;
+            succeeds:failure)
+              echo "::error::Install failed in a conda environment but succeeds in a venv, or the record is wrong. A difference here is attributable to the environment provider: compare against the matching smoke job."
+              exit 1 ;;
+            fails:success)
+              echo "::error::Install SUCCEEDED, but the record expects it to fail. Update platform-support.toml and the README, which currently understate what works."
+              exit 1 ;;
+          esac
+
+      - name: Import the package
+        if: matrix.expect == 'succeeds'
+        env:
+          MPLBACKEND: agg
+        shell: bash -el {0}
+        run: |
+          python -c "
+          import atlas, atlas.pp, atlas.tl, atlas.pl
+          print('atlas', getattr(atlas, '__version__', 'unknown'))
+          "
+
+  # ── Intel macOS: the documented exception ─────────────────────────────────────
+  # The one platform where `pip install atlas-smilies` does not work, and the only
+  # one for which the documentation names a second route. Both are asserted here:
+  #
+  #   step 1  conda env, pip only          → expected to FAIL
+  #   step 2  conda env + conda base, pip  → expected to SUCCEED
+  #
+  # Step 1 is not a supported route; it is the assertion that catches the day pip
+  # starts working here — numba shipping a macOS x86_64 wheel again, or cellrank
+  # relaxing its constraint. Without it the limitation could outlive its cause.
+  #
+  # 3.11 and 3.14 rather than the smoke job's 3.11 and 3.13: 3.14 is where the conda
+  # route may reach a Python pip cannot resolve at all.
+  intel-macos-routes:
+    name: Intel macOS routes (py${{ matrix.python }})
+    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Set up micromamba with Python ${{ matrix.python }}
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: pip-only
+          create-args: python=${{ matrix.python }} pip
+          init-shell: bash
+          cache-environment: false
+
+      # ---- step 1: the default route, expected to fail -------------------------
+      - name: pip install, no conda base
+        id: pip_only
+        continue-on-error: true
+        shell: bash -el {0}
+        run: python -m pip install ".[trees]"
+
+      - name: Assert the default route still fails
+        shell: bash -el {0}
+        run: |
+          if [ '${{ steps.pip_only.outcome }}' = 'failure' ]; then
+            echo "pip install failed, as platform-support.toml records for this platform."
+          else
+            echo "::error::pip install SUCCEEDED on Intel macOS, but the record expects it to fail. numba or llvmlite may have resumed publishing macOS x86_64 wheels — update platform-support.toml and the README, which currently say this platform needs a conda base."
+            exit 1
+          fi
+
+      # ---- step 2: the documented exception, expected to work -------------------
+      # A second environment, built from nothing: what is verified must be what the
+      # documentation instructs, not a repaired version of the failed attempt above.
+      - name: Create a second environment with a conda-provided base
+        shell: bash -el {0}
+        run: |
+          micromamba create -y -n conda-base -c conda-forge \
+            python=${{ matrix.python }} pip numba llvmlite jax jaxlib
+          micromamba run -n conda-base python -m pip --version
+
+      - name: pip install on top of the conda base
+        id: conda_base
+        continue-on-error: true
+        shell: bash -el {0}
+        run: micromamba run -n conda-base python -m pip install ".[trees]"
+
+      - name: Assert the documented route works
+        shell: bash -el {0}
+        run: |
+          if [ '${{ steps.conda_base.outcome }}' = 'success' ]; then
+            echo "Installed on top of the conda base, as documented."
+          else
+            echo "::error::The documented Intel macOS route failed. This platform has no working installation route — record the failing package and revise the README, which currently offers this one."
+            exit 1
+          fi
+
+      # Whether conda's packages survived pip is the mechanism the whole route
+      # depends on, so the versions actually present are printed rather than assumed.
+      - name: Report the versions actually installed
+        shell: bash -el {0}
+        run: |
+          micromamba run -n conda-base python -m pip list
+          micromamba run -n conda-base python -c "
+          from importlib.metadata import version
+          for p in ('numba','llvmlite','jax','jaxlib','cellrank','numpy','anndata'):
+              print(f'{p:10} {version(p)}')
+          "
+
+      - name: Import the package
+        env:
+          MPLBACKEND: agg
+        shell: bash -el {0}
+        run: |
+          micromamba run -n conda-base python -c "
+          import atlas, atlas.pp, atlas.tl, atlas.pl
+          print('atlas', getattr(atlas, '__version__', 'unknown'))
+          "
+
   # ── Does the code behave on a non-Linux OS? ───────────────────────────────────
   # An explicit include list, not an os axis crossed with test.yaml's generated
   # environments: those are JSON objects, and a GitHub `exclude:` against an
@@ -190,6 +365,8 @@ jobs:
     needs:
       - resolution
       - smoke
+      - smoke-conda
+      - intel-macos-routes
       - test-non-linux
     runs-on: ubuntu-latest
     steps:

@@ -35,10 +35,22 @@ in particular, the [API documentation][].
 
 ## Installation
 
-To install ATLAS please use:
+Install ATLAS into a **fresh environment**, created either with `venv` or with conda:
+
 ```bash
+python -m venv atlas-env && source atlas-env/bin/activate
 pip install atlas-smilies
 ```
+
+```bash
+conda create -n atlas python=3.13 && conda activate atlas
+pip install atlas-smilies
+```
+
+> Install into an environment you created for ATLAS. Installing into an environment that
+> already holds other work might not work.
+> state neither tool describes. The platform table below records what happens in a fresh
+> environment.
 
 ### Optional components
 
@@ -56,7 +68,6 @@ the fragment file.
 
 **Faster trajectory inference.** `atlas.tl.CellRankExtension.run` defaults to
 `method="krylov"`, which needs `petsc4py` and `slepc4py`.
-
 Without them CellRank falls back to `method="brandts"`, which requires a dense
 transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 

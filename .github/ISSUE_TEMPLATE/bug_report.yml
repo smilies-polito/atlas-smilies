@@ -19,6 +19,21 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install ATLAS?
+      description: |
+        ATLAS is supported when installed into an environment created for it. Knowing which
+        of these you used tells us whether the platform support table applies to your case.
+      options:
+        - pip, into a fresh virtual environment (venv)
+        - pip, into a fresh conda environment
+        - pip, into an environment that already held other packages
+        - Other (please describe in the report above)
+    validations:
+      required: true
+
   - type: textarea
     id: versions
     attributes:
