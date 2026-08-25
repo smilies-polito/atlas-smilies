@@ -60,6 +60,44 @@ the fragment file.
 Without them CellRank falls back to `method="brandts"`, which requires a dense
 transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 
+### Platforms
+
+ATLAS supports Python 3.11 through 3.14 on the platforms below. This table is written
+from [`platform-support.toml`](platform-support.toml), which the CI job
+`Platforms / Resolution matrix` checks against what actually resolves — in both
+directions, so an entry that stops working and one that starts working are equally
+reported.
+
+| Platform | Python | Installs from wheels | Verified |
+| --- | --- | --- | --- |
+| Linux x86_64 | 3.11 – 3.14 | yes | test suite |
+| Linux aarch64 | 3.11 – 3.14 | yes, core only — see below | resolution only |
+| macOS arm64 | 3.11 – 3.14 | yes | resolution only |
+| macOS x86_64 (Intel) | 3.11 – 3.13 | yes, on a pinned older JAX | not yet verified |
+| Windows x86_64 | 3.11 – 3.14 | yes | resolution only |
+
+"Resolution only" means a consistent set of wheels exists and has been checked, but no
+machine of that platform has run ATLAS. Those platforms are expected to work and are not
+yet claimed to.
+
+**Linux aarch64 and the `trees` extra.** `pip install atlas-smilies` needs no compiler
+here, but `pip install atlas-smilies[trees]` does: `scikit-misc` publishes no aarch64
+Linux wheel, so it is built from source and a Fortran toolchain is required. This is why
+scFates is an extra rather than a dependency — the core package stays installable
+everywhere.
+
+**macOS x86_64 (Intel).** Python 3.14 does not install: no `jaxlib` new enough for
+CPython 3.14 ships a macOS x86_64 wheel, and ATLAS reaches it through
+`palantir → mellon → jaxopt`. On 3.11 to 3.13 the resolver finds a complete set of
+wheels, but pins `jax` and `jaxlib` to 0.4.38 — considerably older than every other
+platform receives. Use Python 3.13 or below on Intel Macs, and consider conda, which
+publishes a macOS x86_64 `jaxlib` that PyPI does not.
+
+**Which dependency versions you get depends on your Python.** cellrank 2.1.0 onward
+requires Python 3.12, so an installation on 3.11 receives cellrank 2.0.7 and the
+contemporaneous scanpy, jax and numpy, while 3.12 and above receive cellrank 2.3.2 and
+current versions of the rest. Both are supported; they are not the same environment.
+
 [scFates]: https://scfates.readthedocs.io/
 [muon]: https://muon.readthedocs.io/
 

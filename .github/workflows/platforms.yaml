@@ -1,0 +1,168 @@
+name: Platforms
+
+# Verifies the claims in platform-support.toml rather than asserting them.
+#
+# Three tiers, each answering a different question:
+#   resolution  — does a solution exist, and does it install from wheels alone?
+#                 Cross-resolved for all five platforms from one Linux runner.
+#   smoke       — does the resolved set actually import on that machine?
+#   test        — do paths, encoding and process spawning work on macOS and Windows?
+#
+# test.yaml is deliberately untouched: it is owned by the cookiecutter-scverse
+# template that .cruft.json pins, and every local edit there conflicts on the next
+# `cruft update`. The non-Linux test runs live here instead, as their own job.
+
+on:
+  push:
+    branches: [public]
+  pull_request:
+    branches: [public]
+  schedule:
+    - cron: "0 5 1,15 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Does it resolve, and is it wheel-complete? ────────────────────────────────
+  # One Linux runner covers every platform ATLAS claims. uv cross-resolves from the
+  # platform tag, so no macOS or Windows machine is involved, and no package is
+  # downloaded. The script asserts platform-support.toml entry by entry: it fails on
+  # an unexpected failure and equally on an unexpected success.
+  resolution:
+    name: Resolution matrix (all platforms)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Check platform support record
+        run: python scripts/check_platform_support.py
+
+  # ── Does the resolved set import on the machine itself? ───────────────────────
+  # Installs with pip, not uv: pip is what the README instructs and what decides the
+  # versions a user actually receives. Each entry names the Python explicitly, since
+  # which interpreter runs decides which dependency world is installed.
+  smoke:
+    name: Install and import (${{ matrix.name }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not cancel the evidence from the others; the point
+      # of the job is the whole picture, not the first red cell.
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]" }
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]" }
+          # ARM Linux installs core only: scikit-misc has no aarch64 wheel, so the
+          # trees extra would compile Fortran on every run. The record expects that,
+          # and the resolution job verifies it without paying for it.
+          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "" }
+          - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]" }
+          - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]" }
+          # Intel macOS runs 3.11 and 3.13 — two genuinely different combinations.
+          # jaxlib pins to 0.4.38 on both, but 3.11 pairs it with cellrank 2.0.7 and
+          # 3.13 with 2.3.2, and neither result can be inferred from the other.
+          # 3.14 is absent because the record expects it not to resolve.
+          - { name: macOS x86_64, os: macos-15-intel, python: "3.11", extras: "[trees]" }
+          - { name: macOS x86_64, os: macos-15-intel, python: "3.13", extras: "[trees]" }
+          - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]" }
+          - { name: Windows x86_64, os: windows-latest, python: "3.14", extras: "[trees]" }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install into a clean environment
+        run: |
+          python -m venv .smoke
+          python -m pip install --upgrade pip
+        shell: bash
+      - name: pip install .${{ matrix.extras }}
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then . .smoke/Scripts/activate; else . .smoke/bin/activate; fi
+          python -m pip install ".${{ matrix.extras }}"
+          python -m pip list
+        shell: bash
+      # Importing the top-level package alone would not notice a broken dependency
+      # behind a submodule, so each subpackage is imported explicitly.
+      - name: Import the package
+        env:
+          MPLBACKEND: agg
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then . .smoke/Scripts/activate; else . .smoke/bin/activate; fi
+          python -c "
+          import atlas, atlas.pp, atlas.tl, atlas.pl
+          print('atlas', getattr(atlas, '__version__', 'unknown'))
+          "
+        shell: bash
+
+  # ── Does the code behave on a non-Linux OS? ───────────────────────────────────
+  # An explicit include list, not an os axis crossed with test.yaml's generated
+  # environments: those are JSON objects, and a GitHub `exclude:` against an
+  # object-valued key must restate the whole object — which silently stops matching
+  # the moment the hatch matrix changes.
+  #
+  # Both platforms run both boundary Pythons. 3.11 is the only version in the older
+  # dependency world (cellrank 2.0.7); 3.14 represents the current one. The
+  # pre-release environment stays Linux-only, as it is in test.yaml today.
+  test-non-linux:
+    name: ${{ matrix.env }} (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS arm64, os: macos-latest, env: hatch-test.py3.11-stable, python: "3.11" }
+          - { name: macOS arm64, os: macos-latest, env: hatch-test.py3.14-stable, python: "3.14" }
+          - { name: Windows x86_64, os: windows-latest, env: hatch-test.py3.11-stable, python: "3.11" }
+          - { name: Windows x86_64, os: windows-latest, env: hatch-test.py3.14-stable, python: "3.14" }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: create hatch environment
+        run: uvx hatch env create ${{ matrix.env }}
+      - name: list all installed package versions
+        run: uvx hatch run ${{ matrix.env }}:uv pip list
+      # The same command test.yaml runs on Linux, so a difference in outcome is a
+      # difference in platform rather than in invocation. On Windows `-n auto` puts
+      # pytest-xdist over spawn-based loky, which is the likeliest source of a red
+      # run that is not ATLAS's fault; characterise such a failure before treating
+      # it as a platform verdict.
+      - name: run tests using hatch
+        env:
+          MPLBACKEND: agg
+          PLATFORM: ${{ matrix.os }}
+          DISPLAY: :42
+        run: uvx hatch run ${{ matrix.env }}:run-cov -v --color=yes -n auto
+
+  # Single required status check for branch protection, mirroring test.yaml's own
+  # `check` job. That job cannot cover jobs in another workflow, so this workflow
+  # needs its own — and the repository setting has to be added by hand.
+  check:
+    name: Platform verification passes
+    if: always()
+    needs:
+      - resolution
+      - smoke
+      - test-non-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
