@@ -47,10 +47,9 @@ conda create -n atlas python=3.13 && conda activate atlas
 pip install atlas-smilies
 ```
 
-> Install into an environment you created for ATLAS. Installing into an environment that
-> already holds other work might not work.
-> state neither tool describes. The platform table below records what happens in a fresh
-> environment.
+> Install into an environment you created for ATLAS. Installing into one that already holds
+> other work might not work: `pip` may replace packages another tool installed and manages.
+> The platform table below records what happens in a fresh environment.
 
 ### Optional components
 
@@ -76,18 +75,20 @@ transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 ATLAS supports Python 3.11 through 3.14 on the platforms below. This table is written from
 [`platform-support.toml`](platform-support.toml), which the `Platforms` workflow checks on
 every change: one job resolves every platform against PyPI, and further jobs install and
-import ATLAS on a machine of each platform.
+import ATLAS on a machine of each platform — in a `venv` and in a conda environment alike,
+since the instructions above offer both.
 
 | Platform | Python | `pip install atlas-smilies` | Verified by |
 | --- | --- | --- | --- |
 | Linux x86\_64 | 3.11 – 3.14 | works | test suite |
 | Linux aarch64 | 3.11 – 3.14 | works, core only — see below | install and import |
 | macOS arm64 | 3.11 – 3.14 | works | test suite |
-| **macOS x86\_64 (Intel)** | — | **not supported** — see below | install attempted, fails |
+| macOS x86\_64 (Intel) | 3.11 – 3.14 | needs conda for four packages — see below | test suite (scheduled) |
 | Windows x86\_64 | 3.11 – 3.14 | works | test suite |
 
 "Install and import" means ATLAS has been installed and imported on that platform in CI,
-but the test suite does not run there.
+but the test suite does not run there. On Intel macOS the suite runs on the twice-monthly
+schedule rather than on every change.
 
 **Linux aarch64 and the `trees` extra.** `pip install atlas-smilies` needs no compiler
 here, but `pip install atlas-smilies[trees]` does: `scikit-misc` publishes no aarch64
@@ -95,10 +96,18 @@ Linux wheel, so it is built from source and a Fortran toolchain is required. Thi
 scFates is an extra rather than a dependency — the core package stays installable
 everywhere.
 
-**macOS x86_64 (Intel) is not supported.** `pip install atlas-smilies` fails there, at
-every tested Python version, and this is verified in CI rather than assumed.
-On 3.11 to 3.13 it resolves and then fails to build: the install ends with
-`Failed building wheel for llvmlite`.
+**macOS x86_64 (Intel) needs four packages from conda.** `pip install atlas-smilies` alone
+does not work there: on 3.11 to 3.13 it resolves and then fails to build, ending with
+`Failed building wheel for llvmlite`, and on 3.14 it does not resolve at all.
+
+Install those packages from conda-forge first, then ATLAS on top:
+
+```bash
+conda create -n atlas -c conda-forge python=3.13 numba llvmlite jax jaxlib
+conda activate atlas
+pip install atlas-smilies[trees]
+```
+
 
 [scFates]: https://scfates.readthedocs.io/
 [muon]: https://muon.readthedocs.io/

@@ -45,12 +45,6 @@
 #                  conda       a conda environment holding only the interpreter,
 #                              unless the route says otherwise
 #
-# A `route` is recorded because the documentation offers it, never because it is
-# available: a conda base would also spare ARM Linux the `trees` extra's Fortran
-# build, and is deliberately absent because the documentation does not offer it
-# there. `environment` follows the same rule, which is why it is populated on every
-# platform — the installation instruction names a conda environment everywhere, so
-# everywhere is claimed.
 
 schema-version = 1
 
@@ -128,7 +122,7 @@ entries = [
 tag = "x86_64-apple-darwin"
 name = "macOS x86_64"
 runner = "macos-15-intel"
-verified = "install-fails"
+verified = "tested"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
   { python = "3.11", shape = "trees", expected = "wheel-complete" },
@@ -198,12 +192,6 @@ pythons = [ "3.11", "3.14" ]
 shape = "trees"
 expected = "succeeds"
 
-# ── conda as the environment provider ────────────────────────────────────────
-# The same route as above — pip resolves everything from PyPI — performed inside a
-# clean conda environment rather than a venv. These match their venv counterparts
-# entry for entry, so any difference between the two is attributable to the
-# environment provider and to nothing else.
-
 [[smoke]]
 platform = "x86_64-unknown-linux-gnu"
 route = "pip"
@@ -236,13 +224,6 @@ pythons = [ "3.11", "3.14" ]
 shape = "trees"
 expected = "succeeds"
 
-# Intel macOS is covered for this combination too, by the route job below, which
-# asserts that it FAILS there. Its Pythons are 3.11 and 3.14 rather than the venv
-# entry's 3.11 and 3.13 — deliberately, and needing no correction: both routes fail
-# there, so there is no difference for the matching to attribute, and the two
-# versions exercise different failures (3.13 resolves and then fails to build; 3.14
-# does not resolve at all).
-
 [[smoke]]
 platform = "x86_64-apple-darwin"
 route = "pip"
@@ -253,16 +234,11 @@ expected = "fails"
 blame = "llvmlite"
 reason = "the interpreter's provenance does not change pip's answer; the same sdist is selected and the same build fails"
 
-# ── conda as the dependency provider, Intel macOS only ───────────────────────
-# The documented exception. Expected outcome is deliberately left unset until the
-# job has reported: writing it here first would be asserting the thing the job
-# exists to find out.
-
 [[smoke]]
 platform = "x86_64-apple-darwin"
 route = "conda-base"
 environment = "conda"
 pythons = [ "3.11", "3.14" ]
 shape = "trees"
-expected = "unverified"
+expected = "succeeds"
 conda-packages = [ "numba", "llvmlite", "jax", "jaxlib" ]

@@ -64,18 +64,9 @@ jobs:
         include:
           - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]", expect: succeeds }
           - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]", expect: succeeds }
-          # ARM Linux installs core only: scikit-misc has no aarch64 wheel, so the
-          # trees extra would compile Fortran on every run. The record expects that,
-          # and the resolution job verifies it without paying for it.
           - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "", expect: succeeds }
           - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]", expect: succeeds }
           - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]", expect: succeeds }
-          # Intel macOS is expected to FAIL: pip selects numba 0.67.0 from source and
-          # then cannot build its llvmlite 0.49.0, which needs a prebuilt LLVM. Both
-          # Pythons are kept because they are different combinations — 3.11 pairs the
-          # pinned old jaxlib with cellrank 2.0.7, 3.13 with 2.3.2 — and because the
-          # platform stays under observation rather than being dropped.
-          # 3.14 is absent because the record expects it not to resolve at all.
           - { name: macOS x86_64, os: macos-15-intel, python: "3.11", extras: "[trees]", expect: fails }
           - { name: macOS x86_64, os: macos-15-intel, python: "3.13", extras: "[trees]", expect: fails }
           - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]", expect: succeeds }
@@ -96,8 +87,6 @@ jobs:
         shell: bash
       - name: pip install .${{ matrix.extras }}
         id: install
-        # The step's real result is kept in steps.install.outcome; the comparison below
-        # decides whether that result is the one the record expects.
         continue-on-error: true
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then . .smoke/Scripts/activate; else . .smoke/bin/activate; fi
@@ -164,9 +153,6 @@ jobs:
         with:
           filter: blob:none
           fetch-depth: 0
-      # micromamba rather than Miniconda or Miniforge: one static binary, no base
-      # environment to create and no shell initialisation to arrange, which keeps the
-      # job's failure modes close to the thing being tested.
       - name: Set up micromamba with Python ${{ matrix.python }}
         uses: mamba-org/setup-micromamba@v2
         with:
@@ -174,8 +160,6 @@ jobs:
           create-args: python=${{ matrix.python }} pip
           init-shell: bash
           cache-environment: false
-      # The environment holds the interpreter and nothing else. This job tests conda
-      # as an ENVIRONMENT provider; the dependency provider is still pip.
       - name: pip install .${{ matrix.extras }}
         id: install
         continue-on-error: true
@@ -221,8 +205,7 @@ jobs:
   #   step 2  conda env + conda base, pip  → expected to SUCCEED
   #
   # Step 1 is not a supported route; it is the assertion that catches the day pip
-  # starts working here — numba shipping a macOS x86_64 wheel again, or cellrank
-  # relaxing its constraint. Without it the limitation could outlive its cause.
+  # starts working here
   #
   # 3.11 and 3.14 rather than the smoke job's 3.11 and 3.13: 3.14 is where the conda
   # route may reach a Python pip cannot resolve at all.
@@ -356,6 +339,63 @@ jobs:
           DISPLAY: :42
         run: uvx hatch run ${{ matrix.env }}:run-cov -v --color=yes -n auto
 
+  # ── Does ATLAS behave against conda-forge's binaries? ─────────────────────────
+  # Scheduled runs only. This is the one place ATLAS runs against conda-forge's builds
+  # of numba, llvmlite and jaxlib rather than PyPI's wheels — and since the README now
+  # sends Intel macOS users down that route, an import is thin evidence that it works.
+  #
+  # It is deliberately NOT in the merge path. hatch cannot drive this environment
+  # (`hatch env create` installs with uv/pip, which is what fails on this platform), so
+  # the invocation is bespoke: a red run here would leave the question of whether the
+  # platform or the invocation broke. Keeping it on the cron means that question is
+  # asked twice a month rather than on every pull request.
+  #
+  # macOS arm64 already covers every OS behaviour Intel Macs share — paths, encoding,
+  # process spawning are Darwin properties. What this adds is the binary provenance.
+  intel-macos-tests:
+    name: Test suite on the conda route (Intel macOS, py${{ matrix.python }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Set up micromamba with the conda base
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: atlas
+          create-args: >-
+            python=${{ matrix.python }} pip
+            numba llvmlite jax jaxlib
+          init-shell: bash
+          cache-environment: false
+      # The same four packages the README instructs, then the project and the test
+      # dependencies from PyPI. `dependency-groups` is not installable by pip, so the
+      # test tools are named here; keep them in step with pyproject's `test` group.
+      - name: Install ATLAS and the test dependencies
+        shell: bash -el {0}
+        run: |
+          python -m pip install ".[trees]"
+          python -m pip install "coverage>=7.10" pytest pytest-cov pytest-xdist
+      - name: Report the versions actually installed
+        shell: bash -el {0}
+        run: |
+          python -c "
+          from importlib.metadata import version
+          for p in ('numba','llvmlite','jax','jaxlib','cellrank','numpy','anndata'):
+              print(f'{p:10} {version(p)}')
+          "
+      - name: Run the test suite
+        env:
+          MPLBACKEND: agg
+        shell: bash -el {0}
+        run: pytest -v --color=yes -n auto
+
   # Single required status check for branch protection, mirroring test.yaml's own
   # `check` job. That job cannot cover jobs in another workflow, so this workflow
   # needs its own — and the repository setting has to be added by hand.
@@ -368,6 +408,9 @@ jobs:
       - smoke-conda
       - intel-macos-routes
       - test-non-linux
+      # intel-macos-tests is deliberately absent: it runs on the schedule only, so on
+      # a pull request it is skipped, and alls-green treats a skipped need as a
+      # failure. Its result is read from the scheduled run, not from the merge gate.
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@release/v1
