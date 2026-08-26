@@ -325,11 +325,6 @@ def fate_probabilities(
     UserWarning
         If any probability is not a number, in which case no figure is produced.
 
-    Notes
-    -----
-    Many fates crowd the figure: the number of diverging maps grows as ``n(n-1)/2``, and one
-    on-data label per fate can overlap in a dense embedding.
-
     Examples
     --------
     >>> atlas.pl.fate_probabilities(mudata)
@@ -646,8 +641,7 @@ def fate_tree(
       without its pseudotime column.
     - ``.obs['term_states_fwd']`` and ``.uns['term_states_fwd_colors']``, naming and colouring
       the fates for the projection.
-    - ``.obs['lineages_fwd_kl_divergence']``, which restates ``.obs['kl_divergence']`` as
-      computed by :func:`atlas.tl.compute_entropy`.
+    - ``.obs['lineages_fwd_kl_divergence']``, which restates ``.obs['kl_divergence']``.
 
     Examples
     --------

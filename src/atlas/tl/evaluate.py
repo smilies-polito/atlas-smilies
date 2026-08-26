@@ -55,10 +55,6 @@ def pearson_correlation(
 
     Notes
     -----
-    Pearson computation, pvalue are computed via :func:`scipy.stats.pearsonr`.
-
-    Analytical confidence intervals are estimated via :meth:`scipy.stats._result_classes.PearsonRResult.confidence_interval`.
-
     Bootstrap-based confidence intervals are used for small sample sizes to improve robustness.
 
     """
@@ -156,9 +152,6 @@ def spearman_correlation(
     thereby bootstrap resampling is used to estimate uncertainty.
 
     Permutation test was used to provide more accurate pvalues as described in :func:`scipy.stats.spearmanr`.
-
-    When the correlation is exactly ±1, the bootstrap distribution becomes degenerate
-    and the confidence interval may contain NaN values.
 
     """
 

@@ -55,6 +55,7 @@ jobs:
   # rather than absorbed.
   smoke:
     name: Install and import (${{ matrix.name }}, py${{ matrix.python }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       # One platform failing must not cancel the evidence from the others; the point
@@ -136,6 +137,7 @@ jobs:
   # combination as its first step, asserting that it fails there.
   smoke-conda:
     name: Install and import, conda env (${{ matrix.name }}, py${{ matrix.python }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -211,6 +213,7 @@ jobs:
   # route may reach a Python pip cannot resolve at all.
   intel-macos-routes:
     name: Intel macOS routes (py${{ matrix.python }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: macos-15-intel
     strategy:
       fail-fast: false
@@ -230,13 +233,25 @@ jobs:
           cache-environment: false
 
       # ---- step 1: the default route, expected to fail -------------------------
+      # 3.11 only. There pip RESOLVES and then fails to BUILD llvmlite, which the
+      # resolution job cannot see: it records that cell as `wheel-complete`, because a
+      # wheel-only solution does exist and uv is blind to what pip actually selects.
+      # This step is the only evidence for the README's claim that plain pip does not
+      # work on Intel macOS.
+      #
+      # At 3.14 pip cannot resolve at all, which the resolution job already asserts as
+      # `does-not-resolve` in 21 seconds — where this step spent 34 minutes backtracking
+      # through every published jax to reach the same verdict. The venv smoke matrix
+      # already omits 3.14 on this platform for exactly that reason.
       - name: pip install, no conda base
         id: pip_only
+        if: matrix.python == '3.11'
         continue-on-error: true
         shell: bash -el {0}
         run: python -m pip install ".[trees]"
 
       - name: Assert the default route still fails
+        if: matrix.python == '3.11'
         shell: bash -el {0}
         run: |
           if [ '${{ steps.pip_only.outcome }}' = 'failure' ]; then
@@ -305,6 +320,7 @@ jobs:
   # pre-release environment stays Linux-only, as it is in test.yaml today.
   test-non-linux:
     name: ${{ matrix.env }} (${{ matrix.name }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -407,12 +423,16 @@ jobs:
       - smoke
       - smoke-conda
       - intel-macos-routes
+      - intel-macos-tests
       - test-non-linux
-      # intel-macos-tests is deliberately absent: it runs on the schedule only, so on
-      # a pull request it is skipped, and alls-green treats a skipped need as a
-      # failure. Its result is read from the scheduled run, not from the merge gate.
     runs-on: ubuntu-latest
     steps:
+      # Every job but `resolution` runs on the schedule only, so on a push they are
+      # skipped. `allowed-skips` tolerates that while keeping them voting when they
+      # do run: a job listed there that FAILS still fails this check. Any new
+      # schedule-gated job must be added to BOTH `needs` and this list — omit it from
+      # here and the aggregate fails on every push.
       - uses: re-actors/alls-green@release/v1
         with:
           jobs: ${{ toJSON(needs) }}
+          allowed-skips: smoke, smoke-conda, intel-macos-routes, intel-macos-tests, test-non-linux

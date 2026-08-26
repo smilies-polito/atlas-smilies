@@ -100,16 +100,18 @@ intersphinx_mapping = {
     "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
-    "muon": ("https://muon.readthedocs.io/en/stable/", None),
+    "muon": ("https://muon.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "cellrank": ("https://cellrank.readthedocs.io/en/latest/", None),
     "palantir": ("https://palantir.readthedocs.io/en/latest/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "petsc4py": ("https://petsc.org/release/petsc4py/", None),
+    "slepc4py": ("https://slepc.upv.es/release/slepc4py/", None),
     "scFates": ("https://scfates.readthedocs.io/en/latest/", None),
     "scvelo": ("https://scvelo.readthedocs.io/en/stable/", None),
     "pygam": ("https://pygam.readthedocs.io/en/latest/", None),
+    "pysam": ("https://pysam.readthedocs.io/en/latest/", None),
 }
 
 # List of patterns, relative to source directory, that match files and

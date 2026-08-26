@@ -78,14 +78,14 @@ def compute_gene_activity(
     mudata
         Multimodal annotated data object carrying the accessibility modality.
     features
-        Feature annotation passed to :func:`muon.atac.tl.count_fragments_features`.
+        Feature annotation. See :func:`muon.atac.tl.count_fragments_features` for more information.
     fragment_path
-        Path to the fragment file, when it is not already recorded on the accessibility
+        Path to the fragment file for gene activity computation. See :func:`muon.atac.tl.count_fragments_features for more information.
         modality.
     stranded
-        Whether to consider strand information.
+        Whether to consider strand information when computing gene activity.
     count_reads
-        Parameter for :func:`muon.atac.tl.count_fragments_features`.
+        Parameter for :func:`muon.atac.tl.count_fragments_features` determining which columns in the fragment file to use for feature aggregation.
     atac_key
         Modality holding chromatin accessibility.
     out_key
@@ -183,7 +183,7 @@ def wnn(
     metric
         Distance metric, as in :func:`muon.pp.neighbors`.
     key_added
-        Key the graph is stored under.
+        Key the graph is stored under. See :func:`muon.pp.neighbors` for more information.
     random_state
         Random seed used for reproducibility.
     copy
@@ -268,7 +268,7 @@ def knn(
     metric
         Distance metric, as in :func:`scanpy.pp.neighbors`.
     key_added
-        Key the graph is stored under.
+        Key the graph is stored under. See :func:`scanpy.pp.neighbors` for more information.
     random_state
         Random seed used for reproducibility.
     copy

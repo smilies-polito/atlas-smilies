@@ -19,7 +19,7 @@ See our publication to learn more:
 Leclercq, A., Martini, L., Bardini, R., Savino, A., & Di Carlo, S. (2026). ATLAS: A scverse-compatible package for multi-omic single-cell trajectory inference integration. bioRxiv. https://doi.org/10.64898/2026.05.23.727175
 
 ```
-![ATLAS workflow](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/workflow.svg)
+![ATLAS workflow](https://raw.githubusercontent.com/smilies-polito/atlas-smilies/public/docs/_static/imgs/fig1.svg)
 
 ATLAS main functionalities include:
 - Computation of gene activity from scATAC-seq data
@@ -73,10 +73,11 @@ transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 ### Platforms
 
 ATLAS supports Python 3.11 through 3.14 on the platforms below. This table is written from
-[`platform-support.toml`](platform-support.toml), which the `Platforms` workflow checks on
-every change: one job resolves every platform against PyPI, and further jobs install and
+`platform-support.toml`, which the `Platforms` workflow checks against reality. One job
+resolves every platform against PyPI and runs on every change. The jobs that install and
 import ATLAS on a machine of each platform — in a `venv` and in a conda environment alike,
-since the instructions above offer both.
+since the instructions above offer both — run on a schedule, twice a month, because what
+they detect is upstream packaging changing rather than anything in this repository.
 
 | Platform | Python | `pip install atlas-smilies` | Verified by |
 | --- | --- | --- | --- |

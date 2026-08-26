@@ -183,14 +183,9 @@ def _write_state_colors(mudata: MuData) -> None:
 
 
 def reset_state_colors(mudata: MuData) -> None:
-    """Restore the state colours ATLAS assigned.
+    """Restore the colours ATLAS assigned to macrostates.
 
-    The per-kind colour lists are the keys the wider ecosystem reads, which means it also
-    writes them: passing ``palette`` to :func:`scanpy.pl.embedding` for one state column
-    replaces that list for good, so a state appearing under more than one kind can end up
-    differently coloured under each.
-
-    This rewrites every list from ``mudata.uns["atlas_state_palette"]``, the record of what was
+    This function rewrites every list from ``mudata.uns["atlas_state_palette"]``, the record of what was
     assigned. It restores rather than reconciles, so it needs no rule for preferring one kind
     over another and works however many lists were overwritten, up to all of them.
 
@@ -201,8 +196,8 @@ def reset_state_colors(mudata: MuData) -> None:
 
     Returns
     -------
-    None
-        The colour lists are rewritten in place.
+        ``None``
+        the colour lists are rewritten in place.
 
     Raises
     ------
@@ -331,14 +326,7 @@ def migrate_states(mudata: MuData) -> None:
     """Record states written by an v1.0.0 in the form 1.1.0 reads.
 
     Before this layout, states were held only as dictionaries in ``.uns`` and colours as a
-    single mapping. Neither is a form the wider ecosystem reads, and a stored key cannot warn
-    when it is read, so an object saved then would otherwise acquire the current layout only
-    by being computed again.
-
-    The coarse states are reconstructed as the union of the initial, terminal and intermediate
-    states recorded. That union is exactly what a fresh run writes: the coarse-graining where
-    one was computed, since the intermediate states were every coarse-state cell marked
-    neither initial nor terminal, and the union of the other kinds where none was.
+    single mapping. This representation is deprecated from 1.1.0 and will be removed in 2.0.0.
 
     Nothing is removed. The dictionaries and the superseded colour mapping are left in place,
     so anything still reading them keeps working, and discarding them stays a separate choice.
@@ -351,7 +339,7 @@ def migrate_states(mudata: MuData) -> None:
 
     Returns
     -------
-    None
+    ``None``
         The object is annotated in place with the state columns, their colour lists and the
         record of the colour assignment.
 

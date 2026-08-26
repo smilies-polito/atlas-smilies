@@ -101,12 +101,6 @@ def umap(
 ) -> MuData:
     """Embed a neighbor graph built by ATLAS with UMAP.
 
-    :func:`atlas.pp.wnn` and :func:`atlas.pp.knn` build a graph.
-    Which implementation embeds their output differs: a weighted graph over
-    several modalities needs :func:`muon.tl.umap`, which reconstructs a combined
-    representation before delegating, while a graph over a single integrated representation
-    needs :func:`scanpy.tl.umap`.
-
     Parameters
     ----------
     mudata

@@ -78,9 +78,6 @@ class MultiLineageGAM:
     Expression and activity are standardized before fitting so that curves are comparable
     across lineages.
 
-    The transcription factor is fitted once per lineage however many genes are given. Its fit
-    depends only on pseudotime, its own expression and that lineage's weights, so this is the
-    same fit rather than an approximation of it.
     """
 
     def __init__(

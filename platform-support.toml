@@ -233,6 +233,21 @@ shape = "trees"
 expected = "fails"
 blame = "llvmlite"
 reason = "the interpreter's provenance does not change pip's answer; the same sdist is selected and the same build fails"
+# The evidence differs between these two Pythons, deliberately.
+#
+#   3.11  verified by running pip on a macos-15-intel runner. It has to be: pip
+#         resolves there and fails at BUILD, and the resolution table records the
+#         cell as `wheel-complete` because a wheel-only solution does exist. uv is
+#         structurally blind to what pip actually selects, so nothing else can
+#         establish this.
+#
+#   3.14  verified by uv's cross-resolve alone, which asserts `does-not-resolve`
+#         for the cell. The pip run was removed: it reached the same verdict by
+#         backtracking through every published jax, taking 34 minutes against the
+#         resolution job's 21 seconds for the whole grid.
+#
+# The verdict is unchanged for both. The basis for 3.14 is weaker, and this note
+# exists so that reads as a decision rather than as an oversight.
 
 [[smoke]]
 platform = "x86_64-apple-darwin"
