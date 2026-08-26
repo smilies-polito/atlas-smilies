@@ -23,4 +23,4 @@ jobs:
       - name: Build package
         run: uv build
       - name: Check package
-        run: uvx twine check --strict dist/*.whl
+        run: uvx twine check --strict dist/*

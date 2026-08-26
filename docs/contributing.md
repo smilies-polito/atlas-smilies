@@ -239,9 +239,13 @@ This means that local testing via hatch and remote testing on CI tests against t
 
 ## Publishing a release
 
-### Updating the version number
+### The version number is not edited
 
-Before making a release, you need to update the version number in the `pyproject.toml` file.
+ATLAS derives its version from git tags, through `hatch-vcs` — `version.source = "vcs"` in
+`pyproject.toml`. There is no version string to update anywhere. The tag *is* the version:
+`v1.1.0` produces `1.1.0`, and a commit that is not tagged produces a development version
+such as `1.0.1.dev48+ga1ac816`.
+
 Please adhere to [Semantic Versioning][semver], in brief
 
 > Given a version number MAJOR.MINOR.PATCH, increment the:
@@ -252,10 +256,55 @@ Please adhere to [Semantic Versioning][semver], in brief
 >
 > Additional labels for pre-release and build metadata are available as extensions to the MAJOR.MINOR.PATCH format.
 
-Once you are done, commit and push your changes and navigate to the "Releases" page of this project on GitHub.
-Specify `vX.X.X` as a tag name and create a release.
-For more information, see [managing GitHub releases][].
-This will automatically create a git tag and trigger a Github workflow that creates a release on [PyPI][].
+### The sequence
+
+Development happens on the GitLab instance; GitHub is a push mirror, and the release
+workflow lives there. The order matters, and it is not the order GitHub's own interface
+suggests:
+
+1. **Tag on GitLab**, which is the source of truth:
+
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+
+2. **Wait for the mirror to carry the tag to GitHub.** Confirm it is there before going on —
+   the tags are what the release build reads.
+
+3. **Create a GitHub release for that existing tag.** On the "Releases" page, choose the tag
+   that is already present rather than typing a new one. Letting GitHub create the tag would
+   put it on the mirror only, leaving PyPI holding a version whose tag does not exist in the
+   source of truth.
+
+4. Publishing the release fires `release.yaml`, which builds, checks, and publishes to
+   [PyPI][] through trusted publishing.
+
+For more information on step 3, see [managing GitHub releases][].
+
+### What the release workflow refuses
+
+`release.yaml` will not publish a distribution it has not proven usable. Between building
+and publishing it:
+
+- validates the metadata of **both** the wheel and the source distribution;
+- installs the built wheel into a clean environment and imports `atlas` and each of
+  `atlas.pp`, `atlas.tl` and `atlas.pl`;
+- refuses any version that is not a release version.
+
+That last check is the one most likely to stop a release, and it almost always means the
+same thing: **the tag was not visible to the build.** Creating the GitHub release before the
+mirror carried the tag produces a development version, and publishing it would burn that
+version number on PyPI permanently. If the workflow refuses, check step 2 rather than the
+gate.
+
+These gates exist because release 1.0.0 was published before they did, with metadata that
+omitted `matplotlib` and `scipy` and carried no upper bound on `pandas`, and nothing noticed
+until a user could not install it.
+
+Note also that trusted publishing is bound on PyPI's side to this repository, the workflow
+filename `release.yaml`, and the `pypi` environment name. Renaming either the file or the
+environment breaks publishing silently.
 
 [semver]: https://semver.org/
 [managing GitHub releases]: https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository

@@ -23,5 +23,41 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Build package
         run: uv build
+      - name: Check the metadata of everything built
+        run: uvx twine check --strict dist/*
+      - name: Install the built wheel and import the package
+        env:
+          MPLBACKEND: agg
+        run: |
+          python -m venv .release-check
+          . .release-check/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+          python -m pip list
+          python -c "
+          import atlas, atlas.pp, atlas.tl, atlas.pl
+          print('imported atlas', getattr(atlas, '__version__', 'unknown'))
+          "
+
+      - name: Refuse a version nobody chose
+        run: |
+          python - <<'CHECK'
+          import pathlib, re, sys
+
+          wheels = sorted(pathlib.Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              sys.exit(f"expected exactly one wheel in dist/, found {len(wheels)}")
+          version = wheels[0].name.split("-")[1]
+
+              sys.exit(
+                  f"refusing to publish version {version!r}.\n"
+                  "This is not a release version. hatch-vcs derives the version from "
+                  "`git describe`, so a development or local version means the tag is "
+                  "absent from this checkout — most likely the GitHub release was "
+                  "created before the tag reached the mirror. Check the tag, not this gate."
+              )
+          print(f"version {version} is a release version")
+          CHECK
+
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
