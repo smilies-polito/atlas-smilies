@@ -119,13 +119,13 @@ def preprocessing(
             If required inputs for gene activity computation are not provided,
             such as fragment file or feature annotations.
     ImportError
-            If :mod:`pysam` is not installed and gene activity must be computed. The error
+            If `pysam <https://pysam.readthedocs.io/en/latest/>`_ is not installed and gene activity must be computed. The error
             is raised by :mod:`muon` and carries its own installation instructions;
             see Notes.
 
     Notes
     -----
-    Where gene activity has to be derived, reading the fragment file requires :mod:`pysam`,
+    Where gene activity has to be derived, reading the fragment file requires `pysam <https://pysam.readthedocs.io/en/latest/>`_ .
     which neither ATLAS nor :mod:`muon` installs by default.
     Supplying an ``"activity"`` modality directly
     avoids the requirement altogether.

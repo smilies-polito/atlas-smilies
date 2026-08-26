@@ -10,7 +10,15 @@ changelog.md
 contributing.md
 references.md
 
-notebooks/tutorial1.ipynb
-notebooks/tutorial2.ipynb
-notebooks/tutorial3.ipynb
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Tutorials
+
+notebooks/T1_Introduction
+notebooks/T2_CellRankExtension
+notebooks/T3_PalantirExtension
+notebooks/T4_Visualization_and_Metrics
+
 ```

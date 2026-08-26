@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
+
+## [1.1.0] - 2026-08-26
 ### Added
 - `atlas.tl.PalantirExtension.early_cell` selects the initial cell required by `atlas.tl.PalantirExtension.run` from the multiscale diffusion space, so it no longer has to be picked by hand. Selection is delegated to `palantir.utils.early_cell`, which cannot accept a `MuData` directly. The expensive fallback remains opt-in through `fallback_seed` and warns before it runs, since it costs as much as `run` itself.
 - `atlas.pp.compute_gene_activity` derives a gene activity modality from scATAC-seq without building any graph, so it can be run, inspected or replaced on its own. The number of components used for its reduction is settable through `n_comps`.

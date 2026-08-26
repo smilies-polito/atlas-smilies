@@ -80,7 +80,7 @@ def compute_gene_activity(
     features
         Feature annotation. See :func:`muon.atac.tl.count_fragments_features` for more information.
     fragment_path
-        Path to the fragment file for gene activity computation. See :func:`muon.atac.tl.count_fragments_features for more information.
+        Path to the fragment file for gene activity computation. See :func:`muon.atac.tl.count_fragments_featuresi` for more information.
         modality.
     stranded
         Whether to consider strand information when computing gene activity.
@@ -109,12 +109,12 @@ def compute_gene_activity(
     ValueError
         If the fragment file cannot be located, or ``features`` is not provided.
     ImportError
-        If :mod:`pysam` is not installed. The error is raised by :mod:`muon` and carries
+        If `pysam <https://pysam.readthedocs.io/en/latest/>`_ is not installed. The error is raised by :mod:`muon` and carries
         its own installation instructions; see Notes.
 
     Notes
     -----
-    Reading the fragment file requires :mod:`pysam`, which neither ATLAS nor :mod:`muon`
+    Reading the fragment file requires `pysam <https://pysam.readthedocs.io/en/latest/>`_, which neither ATLAS nor :mod:`muon`
     installs by default.
 
     """
