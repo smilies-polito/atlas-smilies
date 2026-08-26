@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Added
+- The published release is now verified on every platform it claims, by installing it from PyPI the way this project's own documentation tells each platform to install it: `pip install atlas-smilies` on Linux x86\_64, Linux aarch64, macOS arm64 and Windows, and the documented conda-provided base on Intel macOS, each at Python 3.11 and 3.14. It runs when a release is published and twice a month thereafter.
 
 
 ## [1.1.0] - 2026-08-26

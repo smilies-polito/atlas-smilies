@@ -72,6 +72,9 @@ transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 
 ### Platforms
 
+ATLAS supports Python 3.11 through 3.14 on the platforms below, and the claims are checked
+against reality by two workflows with two different subjects.
+
 ATLAS supports Python 3.11 through 3.14 on the platforms below. This table is written from
 `platform-support.toml`, which the `Platforms` workflow checks against reality. One job
 resolves every platform against PyPI and runs on every change. The jobs that install and
