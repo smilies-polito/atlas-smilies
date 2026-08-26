@@ -1,0 +1,199 @@
+name: Released
+
+# Verifies the distribution users actually install, obtained from PyPI by name.
+#
+# This is a different subject from `platforms.yaml`, which installs the source tree.
+# That one tells you whether a release is safe to cut; this one tells you whether the
+# release you already cut still works. Their failures mean different things:
+#
+#   platforms.yaml red   the source tree has a problem. Nobody is affected yet.
+#   released.yaml  red   users following the README cannot install ATLAS, right now.
+#
+# Every job here is a route the README instructs for its own platform, so every job is
+# expected to SUCCEED. There is no record to consult, no `expect` field and no comparison
+# step: a failing job is itself the signal. If an entry would ever need an expected
+# failure, establish the outcome and fix the documentation instead of adding it here.
+#
+# Release 1.0.0 shipped metadata omitting matplotlib and scipy, and nothing noticed for
+# three months, because nothing in CI ever installed what was published.
+
+on:
+  # Verifies what was just shipped, within minutes of shipping it.
+  release:
+    types: [published]
+  # Drift. Eleven of the thirteen declared dependencies have no upper bound, so a release
+  # that installed correctly can stop doing so with no commit here. Same cadence as
+  # platforms.yaml rather than a second one to reason about.
+  schedule:
+    - cron: "0 5 1,15 * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to verify. Leave empty for the latest release."
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── The documented route for every platform except Intel macOS ────────────────
+  # `pip install atlas-smilies`, into an environment created from nothing, exactly as
+  # the README's installation section instructs.
+  #
+  # Intel macOS is absent deliberately: plain pip fails there, that failure is already
+  # asserted in both directions by platforms.yaml, and repeating it would introduce the
+  # one expected failure this workflow exists without.
+  pip-route:
+    name: pip install (${{ matrix.name }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.11", extras: "[trees]" }
+          - { name: Linux x86_64, os: ubuntu-latest, python: "3.14", extras: "[trees]" }
+          # Core only on ARM Linux. The README states the trees extra needs a Fortran
+          # toolchain there, because scikit-misc publishes no aarch64 wheel — installing
+          # it would verify a documented cost rather than a documented claim.
+          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.11", extras: "" }
+          - { name: Linux aarch64, os: ubuntu-24.04-arm, python: "3.14", extras: "" }
+          - { name: macOS arm64, os: macos-latest, python: "3.11", extras: "[trees]" }
+          - { name: macOS arm64, os: macos-latest, python: "3.14", extras: "[trees]" }
+          - { name: Windows x86_64, os: windows-latest, python: "3.11", extras: "[trees]" }
+          - { name: Windows x86_64, os: windows-latest, python: "3.14", extras: "[trees]" }
+    steps:
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # No checkout. Nothing here comes from the repository — the point is to obtain the
+      # distribution the way a user does, and the retrieval is part of what is verified.
+      - name: Install atlas-smilies from PyPI
+        shell: bash
+        run: |
+          python -m venv .verify
+          if [ "$RUNNER_OS" = "Windows" ]; then . .verify/Scripts/activate; else . .verify/bin/activate; fi
+          python -m pip install --upgrade pip
+
+          SPEC="atlas-smilies${{ matrix.extras }}"
+          if [ -n "${{ inputs.version }}" ]; then
+            SPEC="atlas-smilies${{ matrix.extras }}==${{ inputs.version }}"
+          fi
+          echo "installing $SPEC"
+
+          # Publication to an index is not instantaneous. A run triggered by
+          # `release: published` can ask for a version that is not yet retrievable, and
+          # reporting that as a broken release would be wrong. Only the install is
+          # retried; an import that fails is a real failure.
+          for attempt in 1 2 3; do
+            if python -m pip install "$SPEC"; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::could not install $SPEC after 3 attempts. If this run was triggered by a release published moments ago, the index may still be catching up; otherwise users cannot install this release."
+              exit 1
+            fi
+            echo "install failed, retrying in 30s (attempt $attempt of 3)"
+            sleep 30
+          done
+          python -m pip list
+
+      # Importing the top-level package alone would not notice a broken dependency behind
+      # a submodule: matplotlib and scipy are imported at module scope inside pl/ and tl/,
+      # so `import atlas` can succeed while every subpackage fails. This is the same import
+      # list the platform smoke jobs and the release gate use.
+      - name: Import the package
+        shell: bash
+        env:
+          MPLBACKEND: agg
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then . .verify/Scripts/activate; else . .verify/bin/activate; fi
+          python -c "import atlas, atlas.pp, atlas.tl, atlas.pl; print('imported atlas', getattr(atlas, '__version__', 'unknown'))"
+
+  # ── The documented route for Intel macOS ──────────────────────────────────────
+  # The README gives this platform its own instruction, because plain pip cannot install
+  # there: numba and llvmlite no longer publish macOS x86_64 wheels, and pip selects the
+  # current numba from source rather than falling back to the last versions that do.
+  #
+  # The four conda packages are deliberately unpinned, exactly as the README names them.
+  # If conda-forge moves one and the combination breaks, that is drift in the documented
+  # instruction — which is what this workflow is for.
+  conda-route:
+    name: conda base + pip install (Intel macOS, py${{ matrix.python }})
+    runs-on: macos-15-intel
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 and 3.14 rather than the README's example 3.13: platforms.yaml has already
+        # proved the conda route works at both, and 3.14 is the version plain pip cannot
+        # reach at all.
+        python: ["3.11", "3.14"]
+    steps:
+      - name: Set up micromamba with the conda-provided base
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: atlas
+          create-args: >-
+            python=${{ matrix.python }} pip
+            numba llvmlite jax jaxlib
+          init-shell: bash
+          cache-environment: false
+
+      - name: Install atlas-smilies from PyPI on top
+        shell: bash -el {0}
+        run: |
+          micromamba list
+
+          SPEC="atlas-smilies[trees]"
+          if [ -n "${{ inputs.version }}" ]; then
+            SPEC="atlas-smilies[trees]==${{ inputs.version }}"
+          fi
+          echo "installing $SPEC"
+
+          for attempt in 1 2 3; do
+            if python -m pip install "$SPEC"; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::could not install $SPEC after 3 attempts. If this run was triggered by a release published moments ago, the index may still be catching up; otherwise Intel macOS users following the README cannot install this release."
+              exit 1
+            fi
+            echo "install failed, retrying in 30s (attempt $attempt of 3)"
+            sleep 30
+          done
+          python -m pip list
+
+      # Whether pip left the conda-provided packages in place is the mechanism this route
+      # depends on, so the versions actually present are printed rather than assumed.
+      - name: Report the versions actually installed
+        shell: bash -el {0}
+        run: |
+          python -c "
+          from importlib.metadata import version
+          for p in ('atlas-smilies','numba','llvmlite','jax','jaxlib','cellrank','numpy'):
+              print(f'{p:14} {version(p)}')
+          "
+
+      - name: Import the package
+        shell: bash -el {0}
+        env:
+          MPLBACKEND: agg
+        run: python -c "import atlas, atlas.pp, atlas.tl, atlas.pl; print('imported atlas', getattr(atlas, '__version__', 'unknown'))"
+
+  # A single overall result for the run. Deliberately NOT a required status check in
+  # branch protection: this workflow has no pull-request trigger, so it can never report
+  # on one, and requiring it would leave every pull request waiting forever.
+  check:
+    name: The published release installs everywhere it is claimed to
+    if: always()
+    needs:
+      - pip-route
+      - conda-route
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
