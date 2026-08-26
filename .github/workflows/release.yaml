@@ -23,27 +23,9 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Build package
         run: uv build
-
-      # ── Gates ───────────────────────────────────────────────────────────────
-      # Nothing below publishes. Each step exists to REFUSE a distribution, because
-      # publishing cannot be undone and a version can never be reused. They sit in
-      # this workflow rather than another one deliberately: a check on a different
-      # trigger, against a different checkout, cannot stop this job — it can only
-      # report afterwards that something was already published.
-      #
-      # Release 1.0.0 went through this workflow when it had no gates at all, and
-      # shipped metadata omitting matplotlib and scipy with no upper bound on pandas.
-
-      # `dist/*`, not `dist/*.whl`: uv build produces a source distribution too, and
-      # it is what a conda-forge or bioconda recipe would build from.
       - name: Check the metadata of everything built
         run: uvx twine check --strict dist/*
 
-      # Valid metadata is exactly what 1.0.0 had. Only installing it establishes that
-      # the declared contract is satisfiable, so this is the gate that would have
-      # caught it. Every subpackage is imported, not the top-level package alone:
-      # matplotlib and scipy are imported at module scope inside pl/ and tl/, so
-      # `import atlas` can succeed while every subpackage fails.
       - name: Install the built wheel and import the package
         env:
           MPLBACKEND: agg
@@ -55,14 +37,8 @@ jobs:
           python -m pip list
           python -c "import atlas, atlas.pp, atlas.tl, atlas.pl; print('imported atlas', getattr(atlas, '__version__', 'unknown'))"
 
-      # The version is derived from git tags, so a release cut before its tag reaches
-      # the mirror builds something like 1.0.1.dev48+ga1ac816 — which PyPI would accept
-      # permanently, under a version that could never be reused. The check reads what
-      # was BUILT rather than what was tagged, and lives in a script so it can be run
-      # and tested locally rather than only from here.
       - name: Refuse a version nobody chose
         run: python scripts/check_release_version.py
-      # ── End gates ───────────────────────────────────────────────────────────
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
