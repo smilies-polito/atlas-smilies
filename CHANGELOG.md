@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Fixed
+- Cap anndata <= 0.13.3 as the actual 0.13.3.post0 version has no H5Group anymore and CellRank actual version does not deal yet with it. (cellrank issue #1377)
+
 ### Added
 - The published release is now verified on every platform it claims, by installing it from PyPI the way this project's own documentation tells each platform to install it: `pip install atlas-smilies` on Linux x86\_64, Linux aarch64, macOS arm64 and Windows, and the documented conda-provided base on Intel macOS, each at Python 3.11 and 3.14. It runs when a release is published and twice a month thereafter.
 
