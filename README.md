@@ -70,59 +70,16 @@ the fragment file.
 Without them CellRank falls back to `method="brandts"`, which requires a dense
 transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 
-### Platforms
-
-ATLAS supports Python 3.11 through 3.14 on the platforms below, and the claims are checked
-against reality by two workflows with two different subjects.
-
-ATLAS supports Python 3.11 through 3.14 on the platforms below. This table is written from
-`platform-support.toml`, which the `Platforms` workflow checks against reality. One job
-resolves every platform against PyPI and runs on every change. The jobs that install and
-import ATLAS on a machine of each platform — in a `venv` and in a conda environment alike,
-since the instructions above offer both — run on a schedule, twice a month, because what
-they detect is upstream packaging changing rather than anything in this repository.
-
-| Platform | Python | `pip install atlas-smilies` | Verified by |
-| --- | --- | --- | --- |
-| Linux x86\_64 | 3.11 – 3.14 | works | test suite |
-| Linux aarch64 | 3.11 – 3.14 | works, core only — see below | install and import |
-| macOS arm64 | 3.11 – 3.14 | works | test suite |
-| macOS x86\_64 (Intel) | 3.11 – 3.14 | needs conda for four packages — see below | test suite (scheduled) |
-| Windows x86\_64 | 3.11 – 3.14 | works | test suite |
-
-"Install and import" means ATLAS has been installed and imported on that platform in CI,
-but the test suite does not run there. On Intel macOS the suite runs on the twice-monthly
-schedule rather than on every change.
-
-**Linux aarch64 and the `trees` extra.** `pip install atlas-smilies` needs no compiler
-here, but `pip install atlas-smilies[trees]` does: `scikit-misc` publishes no aarch64
-Linux wheel, so it is built from source and a Fortran toolchain is required. This is why
-scFates is an extra rather than a dependency — the core package stays installable
-everywhere.
-
-**macOS x86_64 (Intel) needs four packages from conda.** `pip install atlas-smilies` alone
-does not work there: on 3.11 to 3.13 it resolves and then fails to build, ending with
-`Failed building wheel for llvmlite`, and on 3.14 it does not resolve at all.
-
-Install those packages from conda-forge first, then ATLAS on top:
-
-```bash
-conda create -n atlas -c conda-forge python=3.13 numba llvmlite jax jaxlib
-conda activate atlas
-pip install atlas-smilies[trees]
-```
-
-
 [scFates]: https://scfates.readthedocs.io/
 [muon]: https://muon.readthedocs.io/
 
 ## Release notes
 
-See the [CHANGELOG][].
+See the [CHANGELOG][https://github.com/smilies-polito/atlas-smilies/blob/public/CHANGELOG.md].
 
 ## Contact
 
-For questions, bug report and help requests, please use the [issue tracker][].
+For questions, bug report and help requests, please use the [issue tracker][ihttps://github.com/smilies-polito/atlas-smilies/issues].
 
 ## Related Works
 - Lange, M., Bergen, V., Klein, M. et al. CellRank for directed single-cell fate mapping. Nat Methods 19, 159–170 (2022). https://doi.org/10.1038/s41592-021-01346-6
