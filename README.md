@@ -75,11 +75,11 @@ transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
 
 ## Release notes
 
-See the [CHANGELOG][https://github.com/smilies-polito/atlas-smilies/blob/public/CHANGELOG.md].
+See the [CHANGELOG][]
 
 ## Contact
 
-For questions, bug report and help requests, please use the [issue tracker][ihttps://github.com/smilies-polito/atlas-smilies/issues].
+For questions, bug report and help requests, please use the [issue tracker][]
 
 ## Related Works
 - Lange, M., Bergen, V., Klein, M. et al. CellRank for directed single-cell fate mapping. Nat Methods 19, 159–170 (2022). https://doi.org/10.1038/s41592-021-01346-6
