@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+## [1.1.2] - 2026-10-07
+- Cap scanpy <1.12 as higher versions are incompatible with current muon.
 
 ## [1.1.1] - 2026-09-15
 ### Fixed

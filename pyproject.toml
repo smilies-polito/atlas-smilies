@@ -37,7 +37,7 @@ dependencies = [
   "palantir>=1.4.5",
   "pandas>=1.5,<3",
   "pygam",
-  "scanpy>=1.9",
+  "scanpy>=1.9,<1.12",
   "scipy>=1.13",
   "scvelo>0.3",
   # for debug logging (referenced from the issue template)
