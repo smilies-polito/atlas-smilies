@@ -100,7 +100,7 @@ intersphinx_mapping = {
     "anndata": ("https://anndata.readthedocs.io/en/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "scanpy": ("https://scanpy.readthedocs.io/en/stable/", None),
-    "muon": ("https://muon.readthedocs.io/en/latest/", None),
+    "muon": ("https://muon.scverse.org/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "cellrank": ("https://cellrank.readthedocs.io/en/latest/", None),
@@ -146,4 +146,8 @@ nitpick_ignore = [
     # If building the documentation fails because of a missing link that is outside your control,
     # you can add an exception to this list.
     #     ("py:class", "igraph.Graph"),
+    ("py:class", "mudata._core.mudata.MuData"),
+    ("py:class", "mudata._core.mudata.MuData"),
+    ("py:class", "muon.MuData"),
+    ("py:mod", "muon"),
 ]

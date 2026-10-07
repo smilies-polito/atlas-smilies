@@ -80,7 +80,7 @@ def compute_gene_activity(
     features
         Feature annotation. See :func:`muon.atac.tl.count_fragments_features` for more information.
     fragment_path
-        Path to the fragment file for gene activity computation. See :func:`muon.atac.tl.count_fragments_featuresi` for more information.
+        Path to the fragment file for gene activity computation. See :func:`muon.atac.tl.count_fragments_features` for more information.
         modality.
     stranded
         Whether to consider strand information when computing gene activity.
