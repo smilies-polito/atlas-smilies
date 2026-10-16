@@ -106,9 +106,9 @@ def test_an_unsupported_type_is_rejected(kernel):
         cext.set_kernel(kernel)
 
 
-def test_a_cellrank_kernel_is_rejected_naming_its_matrix():
+def test_a_cellrank_kernel_object_is_rejected():
     cext = CellRankExtension(_create_mudata())
-    with pytest.raises(TypeError, match="transition_matrix"):
+    with pytest.raises(TypeError, match="found PseudotimeKernel"):
         cext.set_kernel(_pseudotime_kernel())
     assert not hasattr(cext, "_kernel")
 

@@ -236,7 +236,7 @@ class CellRankExtension:
         """
         if not isinstance(kernel, np.ndarray) and not sp.issparse(kernel):
             raise TypeError(
-                f"expected `kernel` to be a numpy.ndarray or a scipy.sparse matrix, found {type(kernel).__name__}; "
+                f"expected `kernel` to be a numpy.ndarray or a scipy.sparse matrix, found {type(kernel).__name__}"
             )
         if cluster_key is not None and cluster_key not in self.mudata.obs.columns:
             raise KeyError(f"{cluster_key} not in mudata.obs")
