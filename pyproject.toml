@@ -27,12 +27,14 @@ classifiers = [
 ]
 dynamic = [ "version" ]
 dependencies = [
-  # cellrank<=2.3.2 imports H5Group, removed in anndata 0.13.3.post0 (scverse/cellrank#1377)
-  "anndata>=0.10,<0.13.3",
+  # cellrank<=2.3.2 imports H5Group, removed in anndata 0.13.3.post0 (scverse/cellrank#1377);
+  # anndata 0.13 with scanpy<1.12 fails to plot boolean .obs columns
+  "anndata>=0.10,<0.13",
   "cellrank>=2",
   "matplotlib>=3.9",
   "mudata>=0.3",
-  "muon>=0.1",
+  # muon 0.2 rejects use_raw=None, which atlas.pl.embedding passes by default
+  "muon>=0.1,<0.2",
   "numpy>=1.23",
   "palantir>=1.4.5",
   "pandas>=1.5,<3",

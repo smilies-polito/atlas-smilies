@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Fixed
+- Cap muon <0.2 as muon 0.2.0 no longer accepts `use_raw=None`, which `atlas.pl.embedding` passes by default.
+- Cap anndata <0.13 as anndata 0.13 with scanpy <1.12 fails to plot boolean `.obs` columns.
+
 ## [1.1.2] - 2026-10-07
 - Cap scanpy <1.12 as higher versions are incompatible with current muon.
 

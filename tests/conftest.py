@@ -2,10 +2,16 @@ import anndata as ad
 import numpy as np
 import pytest
 import scanpy as sc
+import scvelo  # noqa: F401
 from anndata import AnnData
 from muon import MuData
 
 from atlas.pp import knn, preprocessing, wnn
+
+# scvelo calls `warnings.simplefilter("ignore")` when first imported. Imported lazily by
+# `atlas.pl`, that first import could land inside a test's `catch_warnings` block and
+# silence the warning the test asserts, depending on test order. Importing it here moves
+# it before every test; pytest restores the filters once conftest has loaded.
 
 
 @pytest.fixture
