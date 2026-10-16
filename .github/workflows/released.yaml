@@ -117,8 +117,10 @@ jobs:
   # The README gives this platform its own instruction, because plain pip cannot install
   # there: numba and llvmlite no longer publish macOS x86_64 wheels, and pip selects the
   # current numba from source rather than falling back to the last versions that do.
+  # scikit-misc (needed by scFates) stopped publishing them at 0.5.3, and building it
+  # needs a Fortran compiler.
   #
-  # The four conda packages are deliberately unpinned, exactly as the README names them.
+  # The five conda packages are deliberately unpinned, exactly as the README names them.
   # If conda-forge moves one and the combination breaks, that is drift in the documented
   # instruction — which is what this workflow is for.
   conda-route:
@@ -138,7 +140,7 @@ jobs:
           environment-name: atlas
           create-args: >-
             python=${{ matrix.python }} pip
-            numba llvmlite jax jaxlib
+            numba llvmlite jax jaxlib scikit-misc
           init-shell: bash
           cache-environment: false
 
@@ -173,7 +175,7 @@ jobs:
         run: |
           python -c "
           from importlib.metadata import version
-          for p in ('atlas-smilies','numba','llvmlite','jax','jaxlib','cellrank','numpy'):
+          for p in ('atlas-smilies','numba','llvmlite','jax','jaxlib','scikit-misc','cellrank','numpy'):
               print(f'{p:14} {version(p)}')
           "
 

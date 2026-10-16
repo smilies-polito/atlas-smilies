@@ -49,7 +49,7 @@ pip install atlas-smilies
 
 > Install into an environment you created for ATLAS. Installing into one that already holds
 > other work might not work: `pip` may replace packages another tool installed and manages.
-> The platform table below records what happens in a fresh environment.
+> On Intel macOS, follow the instructions [below](#installing-on-intel-macos) instead.
 
 ### Optional components
 
@@ -69,6 +69,22 @@ the fragment file.
 `method="krylov"`, which needs `petsc4py` and `slepc4py`.
 Without them CellRank falls back to `method="brandts"`, which requires a dense
 transition matrix. Evaluate conda forge or installation of PETSC and SLEPC.
+
+### Installing on Intel macOS
+
+**macOS x86_64 (Intel) needs five packages from conda.** `pip install atlas-smilies` alone
+does not work there: on 3.11 to 3.13 it resolves and then fails to build, ending with
+`Failed building wheel for llvmlite`, and on 3.14 it does not resolve at all. With the
+`trees` extra, `scikit-misc` also has to be built from source, which needs a Fortran
+compiler.
+
+Install those packages from conda-forge first, then ATLAS on top:
+
+```bash
+conda create -n atlas -c conda-forge python=3.13 numba llvmlite jax jaxlib scikit-misc
+conda activate atlas
+pip install atlas-smilies[trees]
+```
 
 [scFates]: https://scfates.readthedocs.io/
 [muon]: https://muon.readthedocs.io/

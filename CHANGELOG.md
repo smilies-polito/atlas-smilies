@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Cap muon <0.2 as muon 0.2.0 no longer accepts `use_raw=None`, which `atlas.pl.embedding` passes by default.
 - Cap anndata <0.13 as anndata 0.13 with scanpy <1.12 fails to plot boolean `.obs` columns.
+- Restore the Intel macOS instructions in the README. Intel macOS now needs `scikit-misc` from conda-forge as well, as scikit-misc 0.5.3 publishes no macOS x86\_64 wheels and building it needs a Fortran compiler.
+- Linux aarch64 installs the `trees` extra from wheels alone, as scikit-misc 0.5.3 publishes aarch64 wheels; the platform record no longer says it needs a build.
 
 ## [1.1.2] - 2026-10-07
 - Cap scanpy <1.12 as higher versions are incompatible with current muon.

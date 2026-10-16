@@ -268,7 +268,7 @@ jobs:
         shell: bash -el {0}
         run: |
           micromamba create -y -n conda-base -c conda-forge \
-            python=${{ matrix.python }} pip numba llvmlite jax jaxlib
+            python=${{ matrix.python }} pip numba llvmlite jax jaxlib scikit-misc
           micromamba run -n conda-base python -m pip --version
 
       - name: pip install on top of the conda base
@@ -387,10 +387,10 @@ jobs:
           environment-name: atlas
           create-args: >-
             python=${{ matrix.python }} pip
-            numba llvmlite jax jaxlib
+            numba llvmlite jax jaxlib scikit-misc
           init-shell: bash
           cache-environment: false
-      # The same four packages the README instructs, then the project and the test
+      # The same five packages the README instructs, then the project and the test
       # dependencies from PyPI. `dependency-groups` is not installable by pip, so the
       # test tools are named here; keep them in step with pyproject's `test` group.
       - name: Install ATLAS and the test dependencies

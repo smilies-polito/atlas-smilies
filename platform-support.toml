@@ -1,8 +1,9 @@
 # ATLAS platform support record
 #
 # This file is the single statement of which platforms and Python versions ATLAS
-# supports. The README, the classifiers in pyproject.toml, and the verification job
-# in .github/workflows/platforms.yaml all read from it.
+# supports. The verification job in .github/workflows/platforms.yaml reads from it.
+# Nothing generates anything from it: the classifiers in pyproject.toml and the Intel
+# macOS instructions in the README are kept in step with it by hand.
 #
 # It is a record of expectations. `scripts/check_platform_support.py`
 # resolves every entry below and fails when reality differs from what is recorded —
@@ -37,7 +38,7 @@
 #
 #   route        where the dependencies come from
 #                  pip         everything from PyPI
-#                  conda-base  numba, llvmlite, jax and jaxlib from conda-forge,
+#                  conda-base  numba, llvmlite, jax, jaxlib and scikit-misc from conda-forge,
 #                              then pip for ATLAS and everything else
 #
 #   environment  what the install is performed into
@@ -93,13 +94,13 @@ runner = "ubuntu-24.04-arm"
 verified = "install-and-import"
 entries = [
   { python = "3.11", shape = "core", expected = "wheel-complete" },
-  { python = "3.11", shape = "trees", expected = "requires-build", blame = "scikit-misc" },
+  { python = "3.11", shape = "trees", expected = "wheel-complete" },
   { python = "3.12", shape = "core", expected = "wheel-complete" },
-  { python = "3.12", shape = "trees", expected = "requires-build", blame = "scikit-misc" },
+  { python = "3.12", shape = "trees", expected = "wheel-complete" },
   { python = "3.13", shape = "core", expected = "wheel-complete" },
-  { python = "3.13", shape = "trees", expected = "requires-build", blame = "scikit-misc" },
+  { python = "3.13", shape = "trees", expected = "wheel-complete" },
   { python = "3.14", shape = "core", expected = "wheel-complete" },
-  { python = "3.14", shape = "trees", expected = "requires-build", blame = "scikit-misc" },
+  { python = "3.14", shape = "trees", expected = "wheel-complete" },
 ]
 
 [[platform]]
@@ -181,8 +182,8 @@ environment = "venv"
 pythons = [ "3.11", "3.13" ]
 shape = "trees"
 expected = "fails"
-blame = "llvmlite"
-reason = "pip selects numba 0.67.0 from source; its llvmlite 0.49.0 needs a prebuilt LLVM"
+blame = "scikit-misc"
+reason = "pip selects scikit-misc 0.5.3 from source and stops preparing its metadata, as building it needs a Fortran compiler; without the trees extra it gets further and fails on numba 0.68.0 from source, whose llvmlite 0.50.0 needs a prebuilt LLVM"
 
 [[smoke]]
 platform = "x86_64-pc-windows-msvc"
@@ -231,12 +232,12 @@ environment = "conda"
 pythons = [ "3.11", "3.14" ]
 shape = "trees"
 expected = "fails"
-blame = "llvmlite"
+blame = "scikit-misc"
 reason = "the interpreter's provenance does not change pip's answer; the same sdist is selected and the same build fails"
 # The evidence differs between these two Pythons, deliberately.
 #
 #   3.11  verified by running pip on a macos-15-intel runner. It has to be: pip
-#         resolves there and fails at BUILD, and the resolution table records the
+#         resolves there and fails building an sdist, and the resolution table records the
 #         cell as `wheel-complete` because a wheel-only solution does exist. uv is
 #         structurally blind to what pip actually selects, so nothing else can
 #         establish this.
@@ -256,4 +257,4 @@ environment = "conda"
 pythons = [ "3.11", "3.14" ]
 shape = "trees"
 expected = "succeeds"
-conda-packages = [ "numba", "llvmlite", "jax", "jaxlib" ]
+conda-packages = [ "numba", "llvmlite", "jax", "jaxlib", "scikit-misc" ]
