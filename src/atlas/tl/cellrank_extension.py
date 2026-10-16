@@ -1,10 +1,12 @@
+import warnings
 from collections.abc import Sequence
 from typing import Literal
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 from cellrank.estimators import GPCCA
-from cellrank.kernels import PseudotimeKernel
+from cellrank.kernels import PrecomputedKernel, PseudotimeKernel
 from muon import MuData
 
 from .utils import (
@@ -20,10 +22,12 @@ from .utils import (
 
 
 class CellRankExtension:
-    """Trajectory inference using the CellRank Pseudotime Kernel on ``MuData`` objects.
+    """Trajectory inference using CellRank kernels on ``MuData`` objects.
 
-    This class provides a high-level interface to run Psseudotime-based trajectory
-    inference on multimodal single-cell data stored in a ``MuData``.
+    This class provides a high-level interface to run kernel-based trajectory
+    inference on multimodal single-cell data stored in a ``MuData``. The kernel is
+    either a pseudotime kernel computed by :meth:`compute_kernel`, or a precomputed
+    one supplied through :meth:`set_kernel`.
     It operates directly on the input object and stores all intermediate and
     final results within it.
 
@@ -54,7 +58,11 @@ class CellRankExtension:
 
     @property
     def kernel(self):
-        """Underlying ``PseudotimeKernel`` object."""
+        """Underlying CellRank kernel.
+
+        A :class:`cellrank.kernels.PseudotimeKernel` set by :meth:`compute_kernel`, or a
+        :class:`cellrank.kernels.PrecomputedKernel` set by :meth:`set_kernel`.
+        """
         return self._kernel
 
     @property
@@ -180,6 +188,88 @@ class CellRankExtension:
         self._kernel.compute_transition_matrix(
             threshold_scheme=threshold_scheme, frac_to_keep=frac_to_keep, b=b, nu=nu, n_jobs=n_jobs, backend=backend
         )
+
+    def set_kernel(
+        self,
+        kernel: np.ndarray | sp.spmatrix,
+        cluster_key: str | None = None,
+        backward: bool | None = None,
+    ) -> None:
+        """Set a precomputed transition kernel.
+
+        The transition kernel is supplied rather than computed, as stored as a
+        :class:`cellrank.kernels.PrecomputedKernel` on which :meth:`run` operates
+        as it does on a computed one.
+
+        Parameters
+        ----------
+        kernel
+            Transition matrix of shape ``(n_obs, n_obs)``, as a :class:`numpy.ndarray` or a
+            :mod:`scipy.sparse` matrix. It carries no cell names, so its rows and columns are
+            taken to follow ``mudata.obs_names``, in that order.
+        cluster_key
+            Optional key in ``mudata.obs`` containing cell annotations.
+            If provided, clusters are treated as categorical groups.
+        backward
+            Whether the kernel describes the backward process.
+
+        Returns
+        -------
+        Stores a :class:`cellrank.kernels.PrecomputedKernel` in ``self._kernel``. The
+        ``MuData`` object is not modified.
+
+        Raises
+        ------
+        TypeError
+            If ``kernel`` is not a :class:`numpy.ndarray` or a :mod:`scipy.sparse` matrix.
+        KeyError
+            If ``cluster_key`` is provided but not present in ``mudata.obs``.
+        ValueError
+            If the kernel's shape is not ``(n_obs, n_obs)``, or if it has negative or
+            non-finite entries, or a row with no positive entry.
+
+        Warns
+        -----
+        UserWarning
+            If rows of the matrix do not sum to 1, before they are normalised.
+
+        """
+        if not isinstance(kernel, np.ndarray) and not sp.issparse(kernel):
+            raise TypeError(
+                f"expected `kernel` to be a numpy.ndarray or a scipy.sparse matrix, found {type(kernel).__name__}; "
+            )
+        if cluster_key is not None and cluster_key not in self.mudata.obs.columns:
+            raise KeyError(f"{cluster_key} not in mudata.obs")
+
+        n_obs = self.mudata.n_obs
+        matrix = sp.csr_matrix(kernel) if sp.issparse(kernel) else kernel
+
+        if matrix.shape != (n_obs, n_obs):
+            raise ValueError(f"expected a kernel of shape {(n_obs, n_obs)}, found {matrix.shape}")
+
+        values = matrix.data if sp.issparse(matrix) else matrix
+        if not np.all(np.isfinite(values)):
+            raise ValueError("the kernel has entries that are not finite")
+        if np.any(values < 0):
+            raise ValueError("the kernel has negative entries; a transition matrix holds probabilities")
+
+        sums = np.asarray(matrix.sum(axis=1)).ravel()
+        if np.any(sums == 0):
+            raise ValueError(f"{int(np.sum(sums == 0))} row(s) of the kernel have no positive entry")
+        off = ~np.isclose(sums, 1.0, rtol=1e-12)
+        if off.any():
+            warnings.warn(
+                f"{int(off.sum())} row(s) of the kernel do not sum to 1 and are normalised. A transition "
+                f"matrix is expected; a symmetric matrix, such as a connectivity graph, gives a kernel "
+                f"with no direction.",
+                stacklevel=2,
+            )
+
+        _tmp = _cellrank_anndata(self.mudata, cluster_key=cluster_key)
+        _kernel = PrecomputedKernel(matrix, adata=_tmp, backward=backward)
+
+        self._kernel = _kernel
+        self._cluster_key = cluster_key
 
     def run(
         self,

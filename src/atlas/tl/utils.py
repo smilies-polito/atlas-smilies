@@ -45,13 +45,14 @@ def _resolve_graph_key(mudata: MuData, key: str, kind: str) -> str:
     return name
 
 
-def _cellrank_anndata(mudata: MuData, connectivity_key: str, cluster_key: str | None = None) -> AnnData:
+def _cellrank_anndata(mudata: MuData, connectivity_key: str | None = None, cluster_key: str | None = None) -> AnnData:
     adata = AnnData(
         X=csr_matrix((mudata.n_obs, mudata["rna"].n_vars)),
         obs=mudata.obs.copy(),
         var=pd.DataFrame([], index=mudata["rna"].var_names),
     )
-    adata.obsp[connectivity_key] = mudata.obsp[connectivity_key]
+    if connectivity_key is not None:
+        adata.obsp[connectivity_key] = mudata.obsp[connectivity_key]
 
     if cluster_key is not None:
         adata.obs[cluster_key] = adata.obs[cluster_key].astype("category")

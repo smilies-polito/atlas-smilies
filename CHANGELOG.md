@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Added
+- `atlas.tl.CellRankExtension.set_kernel` supplies a precomputed transition kernel, as an alternative to `atlas.tl.CellRankExtension.compute_kernel`, on which `atlas.tl.CellRankExtension.run` operates unchanged. The kernel is a `numpy.ndarray` or `scipy.sparse` matrix, whose rows and columns are taken to follow `mudata.obs_names`. A matrix whose rows do not sum to 1 is normalised with a warning, and one with negative entries or rows with no positive entry is rejected.
+
 ### Fixed
 - Cap muon <0.2 as muon 0.2.0 no longer accepts `use_raw=None`, which `atlas.pl.embedding` passes by default.
 - Cap anndata <0.13 as anndata 0.13 with scanpy <1.12 fails to plot boolean `.obs` columns.
